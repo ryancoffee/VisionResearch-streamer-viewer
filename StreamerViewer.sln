@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29306.81
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StreamerViewer", "StreamerViewer.vcxproj", "{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}.Debug|x64.ActiveCfg = Debug|x64
+		{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}.Debug|x64.Build.0 = Debug|x64
+		{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}.Debug|x86.ActiveCfg = Debug|Win32
+		{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}.Debug|x86.Build.0 = Debug|Win32
+		{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}.Release|x64.ActiveCfg = Release|x64
+		{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}.Release|x64.Build.0 = Release|x64
+		{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}.Release|x86.ActiveCfg = Release|Win32
+		{2CE58DE2-5A58-4D8C-9E09-1DAF31AB8680}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3C5E4C0A-742F-4929-A1C4-6ABE575D123C}
+	EndGlobalSection
+EndGlobal
