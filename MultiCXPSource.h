@@ -1,4 +1,10 @@
 #pragma once
+
+#include "c:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
+#include "error.h"
+
+using namespace Euresys;
+
 struct ImgNfo
 {
 	size_t	sizeX;
@@ -21,16 +27,42 @@ struct GrabStat
 
 class MultiCXPSource
 {
-	
+
+private:
+	EGenTL* m_pgentl;
+	std::vector<EGrabber<CallbackOnDemand>*> m_grabberlist;
+	std::vector<int> m_cameracountlist;
 public :	
-	MultiCXPSource()
+	MultiCXPSource():
+	m_pgentl(nullptr)
 	{
 		// constructor
+		m_cameracountlist.clear();
+		m_grabberlist.clear();
+
 	}
 	~MultiCXPSource()
 	{
 		// destructor
+
+		// device list
+		for (EGrabber<CallbackOnDemand>* &grab : m_grabberlist)
+		{
+			grab->stop();
+			delete (grab);
+			grab = nullptr;
+		}
+		m_grabberlist.clear();
+
+		// gentl
+		if (m_pgentl)
+		{
+			delete m_pgentl;
+			m_pgentl = nullptr;
+		}
 	}
+
+
 	int Init(CamNfo& nfo);
 	int Start();
 	int Record();

@@ -5,11 +5,14 @@
 #pragma once
 #include "MultiCXPSource.h"
 
+
+
+
 // CStreamerViewerDlg dialog
 class CStreamerViewerDlg : public CDialogEx
 {
 	MultiCXPSource source;
-
+		
 	void MenuGrab(bool enable);
 	void MenuView(bool enable);
 
