@@ -4,7 +4,7 @@
 int MultiCXPSource::Init(CamNfo& nfo)
 {
 	nfo.name = L" S640";
-	nfo.lnkCount = 4;
+	nfo.lnkCount = 4; 
 	return 0;
 }
 
