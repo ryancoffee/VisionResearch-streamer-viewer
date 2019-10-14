@@ -71,8 +71,16 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	// TODO : init all the grabber to accomodate the coneected camera
 
 	nfo.lnkCount = m_grabberlist.size();
+	m_lnkCnt = nfo.lnkCount;
 	std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
 	nfo.name = CString(name.c_str());
+	m_sizeX = m_grabberlist[0]->getWidth();
+	m_sizeY = m_grabberlist[0]->getHeight() * nfo.lnkCount;
+	// TODO find if color or BW m_color = m_grabberlist[0]->
+
+	// start acquistion Stat
+	m_grabberlist[0]->execute<StreamModule>("StatisticsStartSampling");
+
 	return SUCCESS;
 }
 
@@ -98,11 +106,20 @@ int MultiCXPSource::GetImage(UINT8* data)
 
 int MultiCXPSource::GetImageInfo(ImgNfo& nfo)
 {
-	return 0;
+	if (!m_init)
+		return ERROR_NOINIT;
+	nfo.color = m_color;
+	nfo.sizeX = m_sizeX;
+	nfo.sizeY = m_sizeY;
+
+	return SUCCESS;
 }
 
 int MultiCXPSource::GetStat(GrabStat& stat)
 {
+	m_grabberlist[0]->setString<StreamModule>("StatisticsSamplingSelector", "LastSecond");
+	stat.fps = m_grabberlist[0]->getFloat<StreamModule>("StatisticsFrameRate");
+	stat.mbps = m_lnkCnt * m_grabberlist[0]->getFloat<StreamModule>("StatisticsDataRate");
 	return 0;
 }
 

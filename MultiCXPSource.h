@@ -20,8 +20,8 @@ struct CamNfo
 
 struct GrabStat
 {
-	size_t	fps;
-	size_t	mbps;
+	double	fps;
+	double	mbps;
 	size_t	lostframes;
 };
 
@@ -29,12 +29,25 @@ class MultiCXPSource
 {
 
 private:
+	size_t m_sizeX;
+	size_t m_sizeY;
+	bool m_color;
+	bool m_init;
+	uint32_t m_lnkCnt;
+	size_t m_lostCnt;
 	EGenTL* m_pgentl;
+
 	std::vector<EGrabber<CallbackOnDemand>*> m_grabberlist;
 	std::vector<int> m_cameracountlist;
 public :	
 	MultiCXPSource():
 	m_pgentl(nullptr)
+	, m_sizeX(0)
+	, m_sizeY(0)
+	, m_color(false)
+	, m_init(false)
+	, m_lnkCnt(1)
+	, m_lostCnt(0)
 	{
 		// constructor
 		m_cameracountlist.clear();
