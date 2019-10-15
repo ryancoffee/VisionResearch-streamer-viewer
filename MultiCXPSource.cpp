@@ -1,6 +1,14 @@
 #include "pch.h"
 #include "MultiCXPSource.h"
 
+
+void acqThread(MultiCXPSource* source)
+{
+	
+}
+
+
+
 int MultiCXPSource::Init(CamNfo& nfo)
 {
 	nfo.name = L" S640";
@@ -68,7 +76,7 @@ int MultiCXPSource::Init(CamNfo& nfo)
 
 	// TODO : order the grabber 1 Bank -> Bank 4
 
-	// TODO : init all the grabber to accomodate the coneected camera
+	// TODO : init all the grabber to accomodate the connected camera
 
 	nfo.lnkCount = m_grabberlist.size();
 	m_lnkCnt = nfo.lnkCount;
@@ -76,9 +84,14 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	nfo.name = CString(name.c_str());
 	m_sizeX = m_grabberlist[0]->getWidth();
 	m_sizeY = m_grabberlist[0]->getHeight() * nfo.lnkCount;
-	// TODO find if color or BW m_color = m_grabberlist[0]->
+	
+	std::string color = m_grabberlist[0]->getString<RemoteModule>("PixelFormat");
+	if (color.at(0) == 'M')
+		m_color = false;
+	else
+		m_color = true;
 
-	// start acquistion Stat
+	// start acquistion statistic
 	m_grabberlist[0]->execute<StreamModule>("StatisticsStartSampling");
 
 	return SUCCESS;
@@ -86,7 +99,19 @@ int MultiCXPSource::Init(CamNfo& nfo)
 
 int MultiCXPSource::Start()
 {
-	return 0;
+	if (m_brun)
+		return SUCCESS;
+	// reset all stream counters
+	m_grabberlist[0]->execute<StreamModule>("EventCountResetAll"); 
+	
+	// start acq thread
+	m_brun = true;
+	m_acqthread = new std::thread(acqThread, this);
+
+
+	// start all grabbers
+
+	return SUCCESS;
 }
 
 int MultiCXPSource::Record()
@@ -101,7 +126,20 @@ int MultiCXPSource::Stop()
 
 int MultiCXPSource::GetImage(UINT8* data)
 {
-	return 0;
+	if (!m_brun)
+		return ERROR_NOSTARTED;
+
+	m_copybuf = true;
+	uint32_t timeout = 0;
+	while (m_copybuf)
+	{
+		Sleep(10);
+		timeout++;
+		if (timeout > 150)		// 1.5 sec timeout
+			return ERROR_ACQTIMEOUT;
+	}
+	data = m_buff;
+	return SUCCESS;
 }
 
 int MultiCXPSource::GetImageInfo(ImgNfo& nfo)
@@ -117,20 +155,79 @@ int MultiCXPSource::GetImageInfo(ImgNfo& nfo)
 
 int MultiCXPSource::GetStat(GrabStat& stat)
 {
-	m_grabberlist[0]->setString<StreamModule>("StatisticsSamplingSelector", "LastSecond");
-	stat.fps = m_grabberlist[0]->getFloat<StreamModule>("StatisticsFrameRate");
-	stat.mbps = m_lnkCnt * m_grabberlist[0]->getFloat<StreamModule>("StatisticsDataRate");
-	return 0;
+	try
+	{
+		m_grabberlist[0]->setString<StreamModule>("StatisticsSamplingSelector", "LastSecond");
+		stat.fps = m_grabberlist[0]->getFloat<StreamModule>("StatisticsFrameRate");
+		stat.mbps = m_lnkCnt * m_grabberlist[0]->getFloat<StreamModule>("StatisticsDataRate");
+
+		m_grabberlist[0]->setString<StreamModule>("EventSelector", "RejectedFrame"); // find how many drop frame we got
+		stat.lostframes = m_grabberlist[0]->getInteger<StreamModule>("EventCount");
+	}
+	catch (...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;
 }
 
-int MultiCXPSource::SetFps(size_t fps)
+int MultiCXPSource::SetFps(double fps)
 {
-	return 0;
+	if (fps < 0.1)
+		return ERROR_PARAMOUTOFRANGE;
+	if (fps > 297000.0)
+		return ERROR_PARAMOUTOFRANGE;
+	// TODO check fps related to camera model, resolution and number of links 
+	double val = 1000000.0 / fps; // period in us
+	try
+	{
+		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", val);
+	}
+	catch (...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;
 }
 
-int MultiCXPSource::SetExposure(size_t exp)
+int MultiCXPSource::GetFps(double& fps)
 {
-	return 0;
+	try
+	{
+		double val = m_grabberlist[0]->getFloat<DeviceModule>("CycleMinimumPeriod");
+		fps = 1000000 / val;
+	}
+	catch (...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;
+}
+
+int MultiCXPSource::SetExposure(double exp)
+{
+	try 
+	{
+		m_grabberlist[0]->setFloat<RemoteModule>("ExposureTime", exp);
+	}
+	catch(...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;
+}
+
+int MultiCXPSource::GetExposure(double& exp)
+{
+	try
+	{
+		exp = m_grabberlist[0]->getFloat<RemoteModule>("ExposureTime");
+	}
+	catch (...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;
 }
 
 int MultiCXPSource::SetResolution(size_t X, size_t Y)
