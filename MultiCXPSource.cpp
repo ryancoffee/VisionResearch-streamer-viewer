@@ -4,18 +4,40 @@
 
 void acqThread(MultiCXPSource* source)
 {
+	size_t s = source->m_sizeX * source->m_sizeY * (source->m_color ? 3 : 1);
+	std::vector<std::pair<Buffer, codT*>> bufnfo;
 	while (source->m_brun)
 	{
+
 		try
 		{
-			
-			
+			// get buffers from output of each grabber (pop out of output queue)
+			for (codT* g : source->m_grabberlist)
+			{
+				Buffer b = (*g).pop((uint64_t)5000000);
+				std::pair<Buffer, codT*> p(b,g);
+				bufnfo.push_back(p);
+			}
+
+			// get buffer this first grabber hold alway ( for the S990 and S640) the pointer to the first pixel
+			uint8_t* imagePointer = ((bufnfo[0]).first).getInfo<uint8_t*>(*(bufnfo[0].second),GenTL::BUFFER_INFO_BASE);
+
 			// preview image needed
 			if (source->m_copybuf)
 			{
-				memcpy(source->m_buff, buf_in, size);
+				// convert the image to the right format
+
+
+				memcpy(source->m_buff, imagePointer, s);
 				source->m_copybuf = false;
 			}
+
+			// return eeach buffer to its own grabber ( push to input queue)
+			for (auto nfo : bufnfo)
+			{
+				(nfo.first).push(*(nfo.second));
+			}
+			bufnfo.clear;
 		}
 		catch (...)
 		{
@@ -85,7 +107,7 @@ int MultiCXPSource::buildGrabbers()
 	return SUCCESS;
 }
 
-int MultiCXPSource::configS990(size_t pitch)
+int MultiCXPSource::configS990(size_t pitch, size_t payload)
 {
 	size_t stripeHeight = 4; // for all configuration
 	size_t stripePitch = stripeHeight * m_lnkCnt;
@@ -105,6 +127,16 @@ int MultiCXPSource::configS990(size_t pitch)
 			m_grabberlist[ix]->setInteger<StreamModule>("StripeHeight", stripeHeight);
 			m_grabberlist[ix]->setInteger<StreamModule>("StripePitch", stripePitch);
 		}
+		for (int i = 0; i < m_bufferCount; i++)
+		{
+			uint8_t* base = static_cast<uint8_t*>(malloc(payload));
+			for (size_t ix = 0; ix < m_lnkCnt; ++ix)
+			{
+				size_t offset = pitch * stripeHeight * ix;
+				//S990
+				m_grabberlist[ix]->announceAndQueue(UserMemory(base + offset, payload - offset));
+			}
+		}
 	}
 	catch (...)
 	{
@@ -113,7 +145,7 @@ int MultiCXPSource::configS990(size_t pitch)
 	return SUCCESS;
 }
 
-int MultiCXPSource::configS640(size_t pitch)
+int MultiCXPSource::configS640(size_t pitch, size_t payload)
 {
 	size_t stripeHeight = 4; // for all configuration
 	size_t stripePitch = stripeHeight * m_lnkCnt;
@@ -131,6 +163,15 @@ int MultiCXPSource::configS640(size_t pitch)
 			m_grabberlist[ix]->setInteger<StreamModule>("StripePitch", stripePitch);
 			m_grabberlist[ix]->setInteger<StreamModule>("BlockHeight", 4); // in every config
 			m_grabberlist[ix]->setInteger<StreamModule>("StripeOffset", 4 * ix);
+		}
+		for (int i = 0 ; i < m_bufferCount; i++)
+		{
+			uint8_t* base = static_cast<uint8_t*>(malloc(payload));
+			for (size_t ix = 0; ix < m_lnkCnt; ++ix)
+			{
+				//S640
+				m_grabberlist[ix]->announceAndQueue(UserMemory(base, payload));
+			}
 		}
 	}
 	catch (...)
@@ -151,10 +192,10 @@ int MultiCXPSource::configGrabbers()
 	{
 
 	case 1:
-		ret = configS990(pitch);
+		ret = configS990(pitch, payloadSize);
 		break;
 	case 2:
-		ret = configS640(pitch);
+		ret = configS640(pitch, payloadSize);
 		break;
 
 	default:
