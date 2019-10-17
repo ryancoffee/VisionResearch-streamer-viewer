@@ -4,16 +4,30 @@
 
 void acqThread(MultiCXPSource* source)
 {
-	
+	while (source->m_brun)
+	{
+		try
+		{
+			
+			
+			// preview image needed
+			if (source->m_copybuf)
+			{
+				memcpy(source->m_buff, buf_in, size);
+				source->m_copybuf = false;
+			}
+		}
+		catch (...)
+		{
+
+		}
+	}
 }
 
 
 
-int MultiCXPSource::Init(CamNfo& nfo)
+int MultiCXPSource::buildGrabbers()
 {
-	nfo.name = L" S640";
-	nfo.lnkCount = 4; 
-	// open driver 
 	try
 	{
 		m_pgentl = new EGenTL();
@@ -68,6 +82,97 @@ int MultiCXPSource::Init(CamNfo& nfo)
 		// access to device or interface failed 
 		return ERROR_ACCESSDEVICE;
 	}
+	return SUCCESS;
+}
+
+int MultiCXPSource::configS990(size_t pitch)
+{
+	size_t stripeHeight = 4; // for all configuration
+	size_t stripePitch = stripeHeight * m_lnkCnt;
+
+	try
+	{
+		for (size_t ix = 0; ix < m_lnkCnt; ++ix)
+		{
+			//S990 configure camera
+
+			/*m_grabberlist[ix]->setInteger<RemoteModule>("Width", static_cast<int64_t>(width));
+			m_grabberlist[ix]->setInteger<RemoteModule>("Height", static_cast<int64_t>(height));
+			m_grabberlist[ix]->setString<RemoteModule>("PixelFormat", pixelFormat);*/
+			// configure stripes on grabber data stream
+			m_grabberlist[ix]->setInteger<StreamModule>("LinePitch", pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>("LineWidth", pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>("StripeHeight", stripeHeight);
+			m_grabberlist[ix]->setInteger<StreamModule>("StripePitch", stripePitch);
+		}
+	}
+	catch (...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;
+}
+
+int MultiCXPSource::configS640(size_t pitch)
+{
+	size_t stripeHeight = 4; // for all configuration
+	size_t stripePitch = stripeHeight * m_lnkCnt;
+
+	try
+	{
+		for (size_t ix = 0; ix < m_lnkCnt; ++ix)
+		{
+			//S640 configure camera
+			// configure stripes on grabber data stream
+			m_grabberlist[ix]->setString<StreamModule>("StripeArrangement", "Geometry_1X_2YM");
+			m_grabberlist[ix]->setInteger<StreamModule>("LinePitch", pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>("LineWidth", pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>("StripeHeight", stripeHeight);
+			m_grabberlist[ix]->setInteger<StreamModule>("StripePitch", stripePitch);
+			m_grabberlist[ix]->setInteger<StreamModule>("BlockHeight", 4); // in every config
+			m_grabberlist[ix]->setInteger<StreamModule>("StripeOffset", 4 * ix);
+		}
+	}
+	catch (...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;
+}
+
+int MultiCXPSource::configGrabbers()
+{
+	// configure each grabber dma controller
+	size_t pitch = m_grabberlist[0]->getWidth() * m_pgentl->imageGetBytesPerPixel(m_grabberlist[0]->getPixelFormat());
+	size_t payloadSize = pitch * m_grabberlist[0]->getHeight() * m_lnkCnt;
+	int ret = SUCCESS;
+
+	switch (m_cameratype)
+	{
+
+	case 1:
+		ret = configS990(pitch);
+		break;
+	case 2:
+		ret = configS640(pitch);
+		break;
+
+	default:
+		ret = ERROR_UNKNOWNDEV;
+		break;
+	}
+
+	return ret;
+}
+
+int MultiCXPSource::Init(CamNfo& nfo)
+{
+	nfo.name = L" S640";
+	nfo.lnkCount = 4; 
+	// open driver 
+	int ret = buildGrabbers();
+	if (ret != SUCCESS)
+		return ret;
 
 	// TODO : remove all frame grabber that are not QUAD or OCTO
 
@@ -76,10 +181,24 @@ int MultiCXPSource::Init(CamNfo& nfo)
 
 	// TODO : order the grabber 1 Bank -> Bank 4
 
-	// TODO : init all the grabber to accomodate the connected camera
-
+	
+	// configure for acquisition
+	m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
+	m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
+	m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
+	m_grabberlist[0]->setString<DeviceModule>("CycleMinimumPeriod", "20000.0");  // set the trigger rate to 50 Hz
+	m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
+	
+	// how many grabber ?
 	nfo.lnkCount = m_grabberlist.size();
 	m_lnkCnt = nfo.lnkCount;
+
+	// config the grabbers
+	ret = configGrabbers();
+	if (ret != SUCCESS)
+		return ret;
+
+	// fetch camera info
 	std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
 	nfo.name = CString(name.c_str());
 	m_sizeX = m_grabberlist[0]->getWidth();

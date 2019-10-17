@@ -1,6 +1,6 @@
 #pragma once
 
-#include "c:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
+#include "d:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
 #include "error.h"
 #include <thread>
 
@@ -43,6 +43,15 @@ private:
 	EGenTL* m_pgentl;
 	std::thread* m_acqthread;
 	std::vector<int> m_cameracountlist;
+	// 0 unknow, 1 S990, 2 S640, 3 S710
+	uint8_t m_cameratype; 
+
+
+	int buildGrabbers();
+	int configS990(size_t pitch);
+	int configS640(size_t pitch);
+	int configGrabbers();
+
 
 public :	
 	MultiCXPSource():
@@ -56,6 +65,7 @@ public :
 	, m_copybuf(false)
 	, m_acqthread(nullptr)
 	, m_brun(false)
+	, m_cameratype(0)
 	{
 		// constructor
 		m_cameracountlist.clear();
