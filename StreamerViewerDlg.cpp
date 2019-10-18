@@ -76,6 +76,23 @@ CStreamerViewerDlg::CStreamerViewerDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_STREAMERVIEWER_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	m_bitmapInfoCOL = nullptr;
+	m_bitmapInfoBW = nullptr;
+}
+
+CStreamerViewerDlg::~CStreamerViewerDlg()
+{
+	if (m_bitmapInfoCOL != nullptr)
+	{
+		free(m_bitmapInfoCOL);
+		m_bitmapInfoCOL = nullptr;
+	}
+
+	if (m_bitmapInfoBW != nullptr)
+	{
+		free(m_bitmapInfoBW);
+		m_bitmapInfoBW = nullptr;
+	}
 }
 
 void CStreamerViewerDlg::DoDataExchange(CDataExchange* pDX)
@@ -136,7 +153,43 @@ BOOL CStreamerViewerDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
-	// TODO: Add extra initialization here
+	// color image info header
+
+	m_bitmapInfoCOL = (LPBITMAPINFO)malloc(sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD));
+	if (m_bitmapInfoCOL) // prevent C6011 warning
+	{
+		m_bitmapInfoCOL->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		m_bitmapInfoCOL->bmiHeader.biPlanes = 1;
+		m_bitmapInfoCOL->bmiHeader.biBitCount = 24;
+		m_bitmapInfoCOL->bmiHeader.biCompression = BI_RGB;
+		m_bitmapInfoCOL->bmiHeader.biSizeImage = 0;
+		m_bitmapInfoCOL->bmiHeader.biXPelsPerMeter = 0;
+		m_bitmapInfoCOL->bmiHeader.biYPelsPerMeter = 0;
+		m_bitmapInfoCOL->bmiHeader.biClrUsed = 0;
+		m_bitmapInfoCOL->bmiHeader.biClrImportant = 0;
+
+	}
+	// bw image info header
+	m_bitmapInfoBW = (BITMAPINFO*) malloc(sizeof(BITMAPINFO) + 255 * sizeof(RGBQUAD));
+	if (m_bitmapInfoBW)
+	{
+		m_bitmapInfoBW->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		m_bitmapInfoBW->bmiHeader.biPlanes = 1;
+		m_bitmapInfoBW->bmiHeader.biBitCount = 8;
+		m_bitmapInfoBW->bmiHeader.biCompression = BI_RGB;
+		m_bitmapInfoBW->bmiHeader.biSizeImage = 0;
+		m_bitmapInfoBW->bmiHeader.biXPelsPerMeter = 0;
+		m_bitmapInfoBW->bmiHeader.biYPelsPerMeter = 0;
+		m_bitmapInfoBW->bmiHeader.biClrUsed = 0;
+		m_bitmapInfoBW->bmiHeader.biClrImportant = 0;
+		for (int i = 0; i < 256; i++)
+		{
+			m_bitmapInfoBW->bmiColors[i].rgbBlue = (BYTE)i;
+			m_bitmapInfoBW->bmiColors[i].rgbGreen = (BYTE)i;
+			m_bitmapInfoBW->bmiColors[i].rgbRed = (BYTE)i;
+			m_bitmapInfoBW->bmiColors[i].rgbReserved = 0;
+		}
+	}
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }

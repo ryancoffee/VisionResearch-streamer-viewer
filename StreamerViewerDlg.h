@@ -19,6 +19,7 @@ class CStreamerViewerDlg : public CDialogEx
 // Construction
 public:
 	CStreamerViewerDlg(CWnd* pParent = nullptr);	// standard constructor
+	~CStreamerViewerDlg();
 
 // Dialog Data
 #ifdef AFX_DESIGN_TIME
@@ -27,6 +28,9 @@ public:
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
+
+	BITMAPINFO * m_bitmapInfoCOL;
+	BITMAPINFO * m_bitmapInfoBW;
 
 
 // Implementation

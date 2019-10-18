@@ -1,6 +1,6 @@
 #pragma once
 
-#include "c:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
+#include "d:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
 #include "error.h"
 #include <thread>
 
