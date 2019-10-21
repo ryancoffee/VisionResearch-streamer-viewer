@@ -95,6 +95,26 @@ CStreamerViewerDlg::~CStreamerViewerDlg()
 	}
 }
 
+void CStreamerViewerDlg::getImgnDisplay()
+{
+	ImgNfo nfo;
+	uint8_t* data = nullptr;
+	CString fct("Get new image");
+	check(source.GetImageInfo(nfo), fct);
+	check(source.GetImage(data), fct);
+	
+
+	cimg_library::CImg<unsigned char> img(nfo.sizeX, nfo.sizeY, 1, nfo.color ? 3 : 1, 0);
+}
+
+void CStreamerViewerDlg::check(int code, CString fct)
+{
+	CString msg;
+	msg.Format(L"Error %s in function %s", (LPCTSTR)errorText(code), (LPCTSTR)fct);
+	AfxMessageBox(msg);
+
+}
+
 void CStreamerViewerDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
@@ -108,6 +128,7 @@ BEGIN_MESSAGE_MAP(CStreamerViewerDlg, CDialogEx)
 	ON_COMMAND(ID_GRABBER_START, &CStreamerViewerDlg::OnGrabberStart)
 	ON_COMMAND(ID_GRABBER_RECORD, &CStreamerViewerDlg::OnGrabberRecord)
 	ON_COMMAND(ID_GRABBER_STOP, &CStreamerViewerDlg::OnGrabberStop)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -268,8 +289,11 @@ void CStreamerViewerDlg::OnCameraDetect()
 
 void CStreamerViewerDlg::OnGrabberStart()
 {
+	// Start image acquisition
 	source.Start();
+	
 	// Start the timer to pull images
+	SetTimer(1, 30, NULL);
 
 	// enable stop and record and View
 	CMenu* pMenu = GetMenu();
@@ -292,9 +316,28 @@ void CStreamerViewerDlg::OnGrabberRecord()
 
 void CStreamerViewerDlg::OnGrabberStop()
 {
+	// Stop pulling timer
+	KillTimer(1);
+
+	// Stop image acquisition
 	source.Stop();
+	
 	CMenu* pMenu = GetMenu();
 	pMenu->EnableMenuItem(ID_GRABBER_RECORD, MF_ENABLED);
 	pMenu->EnableMenuItem(ID_GRABBER_START, MF_ENABLED);
 	pMenu->EnableMenuItem(ID_GRABBER_STOP, MF_GRAYED);
+}
+
+
+void CStreamerViewerDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: Add your message handler code here and/or call default
+	switch (nIDEvent)
+	{
+	case 1:
+		break;
+	default:
+		break;
+	}
+	CDialogEx::OnTimer(nIDEvent);
 }

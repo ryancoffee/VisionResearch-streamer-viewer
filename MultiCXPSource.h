@@ -8,9 +8,9 @@ using namespace Euresys;
 
 struct ImgNfo
 {
-	size_t	sizeX;
-	size_t	sizeY;
-	bool	color;
+	size_t	sizeX=0;
+	size_t	sizeY=0;
+	bool	color=false;
 };
 
 struct CamNfo

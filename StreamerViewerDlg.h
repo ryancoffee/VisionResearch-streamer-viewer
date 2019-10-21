@@ -4,7 +4,7 @@
 
 #pragma once
 #include "MultiCXPSource.h"
-
+#include "CImg.h"
 
 
 
@@ -25,8 +25,11 @@ public:
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_STREAMERVIEWER_DIALOG };
 #endif
+private: 
+	void getImgnDisplay();
+	void check(int code, CString fct);
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
 	BITMAPINFO * m_bitmapInfoCOL;
@@ -48,4 +51,5 @@ public:
 	afx_msg void OnGrabberStart();
 	afx_msg void OnGrabberRecord();
 	afx_msg void OnGrabberStop();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };
