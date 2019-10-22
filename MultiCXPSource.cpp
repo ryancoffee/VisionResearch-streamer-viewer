@@ -37,7 +37,7 @@ void acqThread(MultiCXPSource* source)
 			{
 				(nfo.first).push(*(nfo.second));
 			}
-			bufnfo.clear;
+			bufnfo.clear();
 		}
 		catch (...)
 		{
@@ -127,7 +127,7 @@ int MultiCXPSource::configS990(size_t pitch, size_t payload)
 			m_grabberlist[ix]->setInteger<StreamModule>("StripeHeight", stripeHeight);
 			m_grabberlist[ix]->setInteger<StreamModule>("StripePitch", stripePitch);
 		}
-		for (int i = 0; i < m_bufferCount; i++)
+		for (uint32_t i = 0; i < m_bufferCount; i++)
 		{
 			uint8_t* base = static_cast<uint8_t*>(malloc(payload));
 			for (size_t ix = 0; ix < m_lnkCnt; ++ix)
@@ -164,7 +164,7 @@ int MultiCXPSource::configS640(size_t pitch, size_t payload)
 			m_grabberlist[ix]->setInteger<StreamModule>("BlockHeight", 4); // in every config
 			m_grabberlist[ix]->setInteger<StreamModule>("StripeOffset", 4 * ix);
 		}
-		for (int i = 0 ; i < m_bufferCount; i++)
+		for (uint32_t i = 0 ; i < m_bufferCount; i++)
 		{
 			uint8_t* base = static_cast<uint8_t*>(malloc(payload));
 			for (size_t ix = 0; ix < m_lnkCnt; ++ix)
@@ -231,7 +231,7 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
 	
 	// how many grabber ?
-	nfo.lnkCount = m_grabberlist.size();
+	nfo.lnkCount = (uint32_t)m_grabberlist.size();
 	m_lnkCnt = nfo.lnkCount;
 
 	// config the grabbers

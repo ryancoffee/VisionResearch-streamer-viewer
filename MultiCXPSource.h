@@ -16,7 +16,7 @@ struct ImgNfo
 struct CamNfo
 {
 	CString name;
-	UINT32 lnkCount;
+	UINT32 lnkCount = 1;
 };
 
 struct GrabStat

@@ -78,6 +78,11 @@ CStreamerViewerDlg::CStreamerViewerDlg(CWnd* pParent /*=nullptr*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	m_bitmapInfoCOL = nullptr;
 	m_bitmapInfoBW = nullptr;
+	m_pdata = nullptr;
+	m_nfo.sizeX = 0;
+	m_nfo.sizeY = 0;
+	m_nfo.color = false;
+	m_reDraw = true;
 }
 
 CStreamerViewerDlg::~CStreamerViewerDlg()
@@ -95,16 +100,24 @@ CStreamerViewerDlg::~CStreamerViewerDlg()
 	}
 }
 
+// get an image from the source and display if available
+
 void CStreamerViewerDlg::getImgnDisplay()
 {
-	ImgNfo nfo;
-	uint8_t* data = nullptr;
 	CString fct("Get new image");
-	check(source.GetImageInfo(nfo), fct);
-	check(source.GetImage(data), fct);
-	
+	check(source.GetImageInfo(m_nfo), fct);
+	check(source.GetImage(m_pdata), fct);
+	if (m_pdata != nullptr)
+	{
+		// post message to redraw the screen
+		if (m_reDraw)
+		{
+			m_reDraw = false;
+			InvalidateRect(NULL); // redraw whole client area
+		}
+	}
 
-	cimg_library::CImg<unsigned char> img(nfo.sizeX, nfo.sizeY, 1, nfo.color ? 3 : 1, 0);
+	//cimg_library::CImg<unsigned char> img(nfo.sizeX, nfo.sizeY, 1, nfo.color ? 3 : 1, 0);
 }
 
 void CStreamerViewerDlg::check(int code, CString fct)
@@ -234,6 +247,7 @@ void CStreamerViewerDlg::OnSysCommand(UINT nID, LPARAM lParam)
 
 void CStreamerViewerDlg::OnPaint()
 {
+
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // device context for painting
@@ -253,8 +267,39 @@ void CStreamerViewerDlg::OnPaint()
 	}
 	else
 	{
+		if (m_pdata != nullptr && m_nfo.sizeX > 0)
+		{
+			CPaintDC dc(this);
+			// color image ?
+			if (m_nfo.color)
+			{
+				m_bitmapInfoCOL->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
+				m_bitmapInfoCOL->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expct from bottom to up
+				// draw the image
+				SetDIBitsToDevice(dc.GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
+					0, 0, 0, (UINT)m_nfo.sizeY,
+					(void*)m_pdata, m_bitmapInfoCOL, DIB_RGB_COLORS);
+			}
+			else
+			{
+				m_bitmapInfoBW->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
+				m_bitmapInfoBW->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expct from bottom to up
+				// draw the image
+				SetDIBitsToDevice(dc.GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
+					0, 0, 0, (UINT)m_nfo.sizeY,
+					(void*)m_pdata, m_bitmapInfoCOL, DIB_RGB_COLORS);
+
+			}
+
+
+
+		}
+
 		CDialogEx::OnPaint();
 	}
+
+	// accept a new Paint message
+	m_reDraw = true;
 }
 
 // The system calls this function to obtain the cursor to display while the user drags
@@ -334,7 +379,8 @@ void CStreamerViewerDlg::OnTimer(UINT_PTR nIDEvent)
 	// TODO: Add your message handler code here and/or call default
 	switch (nIDEvent)
 	{
-	case 1:
+	case 1: // grab image
+		getImgnDisplay();
 		break;
 	default:
 		break;

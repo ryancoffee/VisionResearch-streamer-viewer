@@ -32,9 +32,11 @@ private:
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
-	BITMAPINFO * m_bitmapInfoCOL;
-	BITMAPINFO * m_bitmapInfoBW;
-
+	BITMAPINFO *	m_bitmapInfoCOL;		// bitmap header color ( display)
+	BITMAPINFO *	m_bitmapInfoBW;			// bitmap header BW ( display)
+	ImgNfo			m_nfo;					// info on the incoming image		
+	uint8_t*		m_pdata;				// pointer to the incoming image
+	bool			m_reDraw;				// true if the Onpaint can be called again
 
 // Implementation
 protected:
