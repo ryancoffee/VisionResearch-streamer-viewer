@@ -2,6 +2,7 @@
 #include "MultiCXPSource.h"
 
 
+
 void acqThread(MultiCXPSource* source)
 {
 	size_t s = source->m_sizeX * source->m_sizeY * (source->m_color ? 3 : 1);
@@ -59,7 +60,7 @@ int MultiCXPSource::buildGrabbers()
 		// access the driver failed can do nothing 
 		return ERROR_NODRIVER;
 	}
-	m_pgentl->memento("Source open driver");
+	m_pgentl->memento(std::string("Source open driver"));
 
 	// find how many device we have
 	int devCnt = 0;
@@ -82,7 +83,7 @@ int MultiCXPSource::buildGrabbers()
 			devCnt++;
 		}
 		m_pgentl->tlClose(tlh);											// close all handles  as EGrabber need them
-		m_pgentl->memento("GetGENTL: retrieved board/camera count");
+		m_pgentl->memento(std::string("GetGENTL: retrieved board/camera count"));
 
 
 		//per device
@@ -122,10 +123,10 @@ int MultiCXPSource::configS990(size_t pitch, size_t payload)
 			m_grabberlist[ix]->setInteger<RemoteModule>("Height", static_cast<int64_t>(height));
 			m_grabberlist[ix]->setString<RemoteModule>("PixelFormat", pixelFormat);*/
 			// configure stripes on grabber data stream
-			m_grabberlist[ix]->setInteger<StreamModule>("LinePitch", pitch);
-			m_grabberlist[ix]->setInteger<StreamModule>("LineWidth", pitch);
-			m_grabberlist[ix]->setInteger<StreamModule>("StripeHeight", stripeHeight);
-			m_grabberlist[ix]->setInteger<StreamModule>("StripePitch", stripePitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("LinePitch"), pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("LineWidth"), pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("StripeHeight"), stripeHeight);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("StripePitch"), stripePitch);
 		}
 		for (uint32_t i = 0; i < m_bufferCount; i++)
 		{
@@ -156,13 +157,13 @@ int MultiCXPSource::configS640(size_t pitch, size_t payload)
 		{
 			//S640 configure camera
 			// configure stripes on grabber data stream
-			m_grabberlist[ix]->setString<StreamModule>("StripeArrangement", "Geometry_1X_2YM");
-			m_grabberlist[ix]->setInteger<StreamModule>("LinePitch", pitch);
-			m_grabberlist[ix]->setInteger<StreamModule>("LineWidth", pitch);
-			m_grabberlist[ix]->setInteger<StreamModule>("StripeHeight", stripeHeight);
-			m_grabberlist[ix]->setInteger<StreamModule>("StripePitch", stripePitch);
-			m_grabberlist[ix]->setInteger<StreamModule>("BlockHeight", 4); // in every config
-			m_grabberlist[ix]->setInteger<StreamModule>("StripeOffset", 4 * ix);
+			m_grabberlist[ix]->setString<StreamModule>(std::string("StripeArrangement"), std::string("Geometry_1X_2YM"));
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("LinePitch"), pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("LineWidth"), pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("StripeHeight"), stripeHeight);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("StripePitch"), stripePitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("BlockHeight"), 4); // in every config
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("StripeOffset"), 4 * ix);
 		}
 		for (uint32_t i = 0 ; i < m_bufferCount; i++)
 		{
@@ -208,6 +209,18 @@ int MultiCXPSource::configGrabbers()
 
 int MultiCXPSource::Init(CamNfo& nfo)
 {
+#ifdef DEMOMODE
+	nfo.name = L"Demo";
+	nfo.lnkCount = 4;
+	m_sizeX = 640;
+	m_sizeY = 480;
+	m_color = false;
+	m_init = true;
+	m_buff = (uint8_t*)malloc(m_sizeX * m_sizeY * (m_color ? 3 : 1));
+	if (!m_buff)
+		return ERROR_NOMEMORY;
+	return SUCCESS;
+#endif
 	nfo.name = L" S640";
 	nfo.lnkCount = 4; 
 	// open driver 
@@ -224,11 +237,11 @@ int MultiCXPSource::Init(CamNfo& nfo)
 
 	
 	// configure for acquisition
-	m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
-	m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
-	m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
-	m_grabberlist[0]->setString<DeviceModule>("CycleMinimumPeriod", "20000.0");  // set the trigger rate to 50 Hz
-	m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
+	m_grabberlist[0]->setString<RemoteModule>(std::string("TriggerMode"), std::string("TriggerModeOn"));   // camera in triggered mode
+	m_grabberlist[0]->setString<RemoteModule>(std::string("TriggerSource"), std::string("SWTRIGGER"));     // source of trigger CXP
+	m_grabberlist[0]->setString<DeviceModule>(std::string("CameraControlMethod"), std::string("RC"));      // tell grabber 0 to send trigger
+	m_grabberlist[0]->setFloat<DeviceModule>(std::string("CycleMinimumPeriod"), 20000.0);  // set the trigger rate to 50 Hz
+	m_grabberlist[0]->setString<DeviceModule>(std::string("ExposureReadoutOverlap"), std::string("True")); // camera needs 2 trigger to start
 	
 	// how many grabber ?
 	nfo.lnkCount = (uint32_t)m_grabberlist.size();
@@ -240,20 +253,24 @@ int MultiCXPSource::Init(CamNfo& nfo)
 		return ret;
 
 	// fetch camera info
-	std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
+	std::string name = m_grabberlist[0]->getString<DeviceModule>(std::string("DeviceModelName"));
 	nfo.name = CString(name.c_str());
 	m_sizeX = m_grabberlist[0]->getWidth();
 	m_sizeY = m_grabberlist[0]->getHeight() * nfo.lnkCount;
 	
-	std::string color = m_grabberlist[0]->getString<RemoteModule>("PixelFormat");
+	m_buff = (uint8_t*) malloc(m_sizeX * m_sizeY * (m_color ? 3 : 1));
+	if (!m_buff)
+		return ERROR_NOMEMORY;
+	std::string color = m_grabberlist[0]->getString<RemoteModule>(std::string("PixelFormat"));
 	if (color.at(0) == 'M')
 		m_color = false;
 	else
 		m_color = true;
 
 	// start acquistion statistic
-	m_grabberlist[0]->execute<StreamModule>("StatisticsStartSampling");
+	m_grabberlist[0]->execute<StreamModule>(std::string("StatisticsStartSampling"));
 
+	m_init = true;
 	return SUCCESS;
 }
 
@@ -261,8 +278,12 @@ int MultiCXPSource::Start()
 {
 	if (m_brun)
 		return SUCCESS;
+#ifdef DEMOMODE
+	m_brun = true;
+	return SUCCESS;
+#endif
 	// reset all stream counters
-	m_grabberlist[0]->execute<StreamModule>("EventCountResetAll"); 
+	m_grabberlist[0]->execute<StreamModule>(std::string("EventCountResetAll"));
 	
 	// start acq thread
 	m_brun = true;
@@ -281,13 +302,50 @@ int MultiCXPSource::Record()
 
 int MultiCXPSource::Stop()
 {
-	return 0;
+	if (!m_brun)
+		return SUCCESS;
+#ifdef DEMOMODE
+	m_brun = false;
+	return SUCCESS;
+#endif
+	m_brun = false;
+	m_acqthread->join();
+
+	return SUCCESS;
 }
 
-int MultiCXPSource::GetImage(UINT8* data)
+int MultiCXPSource::GetImage(UINT8** data)
 {
 	if (!m_brun)
 		return ERROR_NOSTARTED;
+#ifdef DEMOMODE
+	
+	static char offset = 0;
+	uint8_t* px = m_buff;
+	for (int j = 0; j < m_sizeY; j++)
+	{
+		for (int i = 0; i < m_sizeX; i++)
+		{
+			if (m_color)
+			{
+				*px = 255 - ((uint8_t)(offset + i + j));
+				px++;				
+				*px = (uint8_t)(offset + i + j);
+				px++;				
+				*px = (uint8_t)(128 - (uint8_t)(offset + i + j));
+				px++;
+			}
+			else
+			{
+				*px = (uint8_t)(offset + i + j);
+				px++;
+			}
+		}
+	}
+	offset++;
+	*data = m_buff;
+	return SUCCESS;
+#endif
 
 	m_copybuf = true;
 	uint32_t timeout = 0;
@@ -298,7 +356,7 @@ int MultiCXPSource::GetImage(UINT8* data)
 		if (timeout > 150)		// 1.5 sec timeout
 			return ERROR_ACQTIMEOUT;
 	}
-	data = m_buff;
+	*data = m_buff;
 	return SUCCESS;
 }
 
@@ -315,14 +373,22 @@ int MultiCXPSource::GetImageInfo(ImgNfo& nfo)
 
 int MultiCXPSource::GetStat(GrabStat& stat)
 {
+	if (!m_init)
+		return ERROR_NOINIT;
+#ifdef DEMOMODE
+	stat.fps = m_fps;
+	stat.mbps = m_sizeX * m_sizeY * m_fps;
+	stat.lostframes = 0;
+	return SUCCESS;
+#endif
 	try
 	{
-		m_grabberlist[0]->setString<StreamModule>("StatisticsSamplingSelector", "LastSecond");
-		stat.fps = m_grabberlist[0]->getFloat<StreamModule>("StatisticsFrameRate");
-		stat.mbps = m_lnkCnt * m_grabberlist[0]->getFloat<StreamModule>("StatisticsDataRate");
+		m_grabberlist[0]->setString<StreamModule>(std::string("StatisticsSamplingSelector"), std::string("LastSecond"));
+		stat.fps = m_grabberlist[0]->getFloat<StreamModule>(std::string("StatisticsFrameRate"));
+		stat.mbps = m_lnkCnt * m_grabberlist[0]->getFloat<StreamModule>(std::string("StatisticsDataRate"));
 
-		m_grabberlist[0]->setString<StreamModule>("EventSelector", "RejectedFrame"); // find how many drop frame we got
-		stat.lostframes = m_grabberlist[0]->getInteger<StreamModule>("EventCount");
+		m_grabberlist[0]->setString<StreamModule>(std::string("EventSelector"), std::string("RejectedFrame")); // find how many drop frame we got
+		stat.lostframes = m_grabberlist[0]->getInteger<StreamModule>(std::string("EventCount"));
 	}
 	catch (...)
 	{
@@ -337,11 +403,17 @@ int MultiCXPSource::SetFps(double fps)
 		return ERROR_PARAMOUTOFRANGE;
 	if (fps > 297000.0)
 		return ERROR_PARAMOUTOFRANGE;
+	if (!m_init)
+		return ERROR_NOINIT;
+#ifdef DEMOMODE
+	m_fps = fps;
+	return SUCCESS;
+#endif
 	// TODO check fps related to camera model, resolution and number of links 
 	double val = 1000000.0 / fps; // period in us
 	try
 	{
-		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", val);
+		m_grabberlist[0]->setFloat<DeviceModule>(std::string("CycleMinimumPeriod"), val);
 	}
 	catch (...)
 	{
@@ -352,9 +424,15 @@ int MultiCXPSource::SetFps(double fps)
 
 int MultiCXPSource::GetFps(double& fps)
 {
+	if (!m_init)
+		return ERROR_NOINIT;
+#ifdef DEMOMODE
+	fps = m_fps;
+	return SUCCESS;
+#endif
 	try
 	{
-		double val = m_grabberlist[0]->getFloat<DeviceModule>("CycleMinimumPeriod");
+		double val = m_grabberlist[0]->getFloat<DeviceModule>(std::string("CycleMinimumPeriod"));
 		fps = 1000000 / val;
 	}
 	catch (...)
@@ -366,9 +444,15 @@ int MultiCXPSource::GetFps(double& fps)
 
 int MultiCXPSource::SetExposure(double exp)
 {
+	if (!m_init)
+		return ERROR_NOINIT;
+#ifdef DEMOMODE
+	exp = m_exp;
+	return SUCCESS;
+#endif
 	try 
 	{
-		m_grabberlist[0]->setFloat<RemoteModule>("ExposureTime", exp);
+		m_grabberlist[0]->setFloat<RemoteModule>(std::string("ExposureTime"), exp);
 	}
 	catch(...)
 	{
@@ -379,9 +463,15 @@ int MultiCXPSource::SetExposure(double exp)
 
 int MultiCXPSource::GetExposure(double& exp)
 {
+	if (!m_init)
+		return ERROR_NOINIT;
+#ifdef DEMOMODE
+	exp = m_exp;
+	return SUCCESS;
+#endif
 	try
 	{
-		exp = m_grabberlist[0]->getFloat<RemoteModule>("ExposureTime");
+		exp = m_grabberlist[0]->getFloat<RemoteModule>(std::string("ExposureTime"));
 	}
 	catch (...)
 	{
@@ -392,5 +482,19 @@ int MultiCXPSource::GetExposure(double& exp)
 
 int MultiCXPSource::SetResolution(size_t X, size_t Y)
 {
-	return 0;
+	if (!m_init)
+		return ERROR_NOINIT;
+#ifdef DEMOMODE
+	if (m_sizeX == X && m_sizeY == Y)
+		return SUCCESS;
+	if (m_buff)
+	{
+		free(m_buff);
+	}
+	m_buff = (uint8_t*)malloc(m_sizeX * m_sizeY * (m_color ? 3 : 1));
+	if (!m_buff)
+		return ERROR_NOMEMORY;
+	return SUCCESS;
+#endif
+	return ERROR_NOTIMPLEMENTED;
 }

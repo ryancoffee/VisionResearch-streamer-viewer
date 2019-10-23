@@ -106,14 +106,16 @@ void CStreamerViewerDlg::getImgnDisplay()
 {
 	CString fct("Get new image");
 	check(source.GetImageInfo(m_nfo), fct);
-	check(source.GetImage(m_pdata), fct);
+	check(source.GetImage(&m_pdata), fct);
 	if (m_pdata != nullptr)
 	{
 		// post message to redraw the screen
 		if (m_reDraw)
 		{
 			m_reDraw = false;
-			InvalidateRect(NULL); // redraw whole client area
+/*			CWnd* pic = GetDlgItem(IDC_STPICTURE);
+			pic->InvalidateRect(NULL); // redraw whole client area*/
+			InvalidateRect(NULL);
 		}
 	}
 
@@ -122,6 +124,8 @@ void CStreamerViewerDlg::getImgnDisplay()
 
 void CStreamerViewerDlg::check(int code, CString fct)
 {
+	if (SUCCESS == code)
+		return;
 	CString msg;
 	msg.Format(L"Error %s in function %s", (LPCTSTR)errorText(code), (LPCTSTR)fct);
 	AfxMessageBox(msg);
@@ -267,35 +271,39 @@ void CStreamerViewerDlg::OnPaint()
 	}
 	else
 	{
+		CDialogEx::OnPaint();
+
 		if (m_pdata != nullptr && m_nfo.sizeX > 0)
 		{
-			CPaintDC dc(this);
+
+			CWnd *pic= GetDlgItem(IDC_STPICTURE);
+			CDC* pdc = pic->GetDC();
 			// color image ?
 			if (m_nfo.color)
 			{
 				m_bitmapInfoCOL->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
-				m_bitmapInfoCOL->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expct from bottom to up
+				m_bitmapInfoCOL->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expect from bottom to up
 				// draw the image
-				SetDIBitsToDevice(dc.GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
+				SetDIBitsToDevice(pdc->GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
 					0, 0, 0, (UINT)m_nfo.sizeY,
 					(void*)m_pdata, m_bitmapInfoCOL, DIB_RGB_COLORS);
 			}
 			else
 			{
 				m_bitmapInfoBW->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
-				m_bitmapInfoBW->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expct from bottom to up
+				m_bitmapInfoBW->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expect from bottom to up
 				// draw the image
-				SetDIBitsToDevice(dc.GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
+				SetDIBitsToDevice(pdc->GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
 					0, 0, 0, (UINT)m_nfo.sizeY,
-					(void*)m_pdata, m_bitmapInfoCOL, DIB_RGB_COLORS);
+					(void*)m_pdata, m_bitmapInfoBW, DIB_RGB_COLORS);
 
 			}
-
+			pic->ReleaseDC(pdc);
 
 
 		}
 
-		CDialogEx::OnPaint();
+
 	}
 
 	// accept a new Paint message

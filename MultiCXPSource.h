@@ -4,6 +4,8 @@
 #include "error.h"
 #include <thread>
 
+#define DEMOMODE 1
+
 using namespace Euresys;
 
 struct ImgNfo
@@ -54,8 +56,10 @@ private:
 	int configS990(size_t pitch, size_t payload);
 	int configS640(size_t pitch, size_t payload);
 	int configGrabbers();
-
-
+#ifdef DEMOMODE
+	double  m_exp;
+	double	m_fps;
+#endif
 public :	
 	MultiCXPSource():
 	m_pgentl(nullptr)
@@ -74,6 +78,10 @@ public :
 		// constructor
 		m_cameracountlist.clear();
 		m_grabberlist.clear();
+#ifdef DEMOMODE
+		m_exp = 10;
+		m_fps = 40;
+#endif
 
 	}
 	~MultiCXPSource()
@@ -95,6 +103,11 @@ public :
 			delete m_pgentl;
 			m_pgentl = nullptr;
 		}
+		if (m_buff)
+		{
+			free(m_buff);
+			m_buff = nullptr;
+		}
 	}
 
 
@@ -102,7 +115,7 @@ public :
 	int Start();
 	int Record();
 	int Stop();
-	int GetImage(UINT8 * data);
+	int GetImage(UINT8 ** data);
 	int GetImageInfo(ImgNfo& nfo);
 	int GetStat(GrabStat& stat);
 	int SetFps(double fps);

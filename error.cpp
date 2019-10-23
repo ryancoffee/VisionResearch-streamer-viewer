@@ -7,23 +7,27 @@ CString errorText(int errorCode)
 	CString code = L"Error unknown";
 	switch (errorCode)
 	{
-	case 0: code = L"No error";
+	case SUCCESS: code = L"No error";
 		break;
-	case -100: code = L"The driver for the frame grabber was not found";
+	case ERROR_NODRIVER: code = L"The driver for the frame grabber was not found";
 		break;
-	case -110: code = L"Can not access frame grabber";
+	case ERROR_ACCESSDEVICE: code = L"Can not access frame grabber";
 		break;
-	case -120: code = L"System not properly initialized";
+	case ERROR_NOINIT: code = L"System not properly initialized";
 		break;
-	case -130: code = L"System not properly started";
+	case ERROR_NOSTARTED: code = L"System not properly started";
 		break;
-	case -200: code = L"Parameter out of range";
+	case ERROR_NOMEMORY: code = L"System has not enough memory to proceed";
 		break;
-	case -210: code = L"Parameter access denied";
+	case ERROR_PARAMOUTOFRANGE: code = L"Parameter out of range";
 		break;
-	case -220: code = L"Unknown device";
+	case ERROR_PARAMACCESS: code = L"Parameter access denied";
 		break;
-	case -500: code = L"Acquisition timeout";
+	case ERROR_UNKNOWNDEV: code = L"Unknown device";
+		break;
+	case ERROR_ACQTIMEOUT: code = L"Acquisition timeout";
+		break;
+	case ERROR_NOTIMPLEMENTED: code = L"Feature not available";
 		break;
 	default:
 		break;
