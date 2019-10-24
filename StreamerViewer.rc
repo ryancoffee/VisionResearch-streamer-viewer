@@ -92,14 +92,20 @@ BEGIN
     DEFPUSHBUTTON   "OK",IDOK,113,41,50,14,WS_GROUP
 END
 
-IDD_STREAMERVIEWER_DIALOG DIALOGEX 0, 0, 389, 211
+IDD_STREAMERVIEWER_DIALOG DIALOGEX 0, 0, 384, 227
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 EXSTYLE WS_EX_APPWINDOW
 MENU IDR_MAINMENU
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,332,190,50,14
-    CONTROL         "",IDC_STPICTURE,"Static",SS_BLACKFRAME,7,7,323,183
+    DEFPUSHBUTTON   "OK",IDOK,314,198,50,14
+    CONTROL         "",IDC_STPICTURE,"Static",SS_BLACKFRAME,8,7,301,184
+    EDITTEXT        IDC_EDT_FPS,9,197,28,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_EDT_MPS,57,197,33,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_EDT_LOSTFRAME,124,197,33,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "fps",IDC_STATIC,39,199,10,8
+    LTEXT           "MB/s",IDC_STATIC,93,199,16,8
+    LTEXT           "Lost frames",IDC_STATIC,160,199,37,8
 END
 
 
@@ -160,10 +166,6 @@ BEGIN
 
     IDD_STREAMERVIEWER_DIALOG, DIALOG
     BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 382
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 204
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -178,7 +180,13 @@ IDD_STREAMERVIEWER_DIALOG AFX_DIALOG_LAYOUT
 BEGIN
     0,
     100, 100, 0, 0,
-    0, 0, 100, 100
+    0, 0, 100, 100,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0
 END
 
 
@@ -203,8 +211,23 @@ BEGIN
     POPUP "View"
     BEGIN
         MENUITEM "Full Size",                   ID_VIEW_FULLSIZE
-        MENUITEM "Zoom In",                     ID_VIEW_ZOOMIN
-        MENUITEM "Zoom Out",                    ID_VIEW_ZOOMOUT
+        POPUP "Zoom In"
+        BEGIN
+            MENUITEM "x2",                          ID_ZOOMIN_X2
+            MENUITEM "x4",                          ID_ZOOMIN_X4
+            MENUITEM "x8",                          ID_ZOOMIN_X8
+            MENUITEM "x16",                         ID_ZOOMIN_X16
+        END
+        POPUP "Zoom Out"
+        BEGIN
+            MENUITEM "1/2",                         ID_ZOOMOUT_1
+            MENUITEM "1/4",                         ID_ZOOMOUT_2
+            MENUITEM "1/8",                         ID_ZOOMOUT_3
+            MENUITEM "1/16",                        ID_ZOOMOUT_4
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "Fit to screen",               ID_VIEW_FITTOSCREEN
+        MENUITEM "Keep aspect ratio",           ID_VIEW_KEEPASPECTRATIO
     END
 END
 

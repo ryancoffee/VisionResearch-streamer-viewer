@@ -237,11 +237,11 @@ int MultiCXPSource::Init(CamNfo& nfo)
 
 	
 	// configure for acquisition
-	m_grabberlist[0]->setString<RemoteModule>(std::string("TriggerMode"), std::string("TriggerModeOn"));   // camera in triggered mode
-	m_grabberlist[0]->setString<RemoteModule>(std::string("TriggerSource"), std::string("SWTRIGGER"));     // source of trigger CXP
-	m_grabberlist[0]->setString<DeviceModule>(std::string("CameraControlMethod"), std::string("RC"));      // tell grabber 0 to send trigger
-	m_grabberlist[0]->setFloat<DeviceModule>(std::string("CycleMinimumPeriod"), 20000.0);  // set the trigger rate to 50 Hz
-	m_grabberlist[0]->setString<DeviceModule>(std::string("ExposureReadoutOverlap"), std::string("True")); // camera needs 2 trigger to start
+	m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
+	m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
+	m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
+	m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 20000.0);  // set the trigger rate to 50 Hz
+	m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap","True"); // camera needs 2 trigger to start
 	
 	// how many grabber ?
 	nfo.lnkCount = (uint32_t)m_grabberlist.size();
@@ -253,7 +253,7 @@ int MultiCXPSource::Init(CamNfo& nfo)
 		return ret;
 
 	// fetch camera info
-	std::string name = m_grabberlist[0]->getString<DeviceModule>(std::string("DeviceModelName"));
+	std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
 	nfo.name = CString(name.c_str());
 	m_sizeX = m_grabberlist[0]->getWidth();
 	m_sizeY = m_grabberlist[0]->getHeight() * nfo.lnkCount;
@@ -377,18 +377,18 @@ int MultiCXPSource::GetStat(GrabStat& stat)
 		return ERROR_NOINIT;
 #ifdef DEMOMODE
 	stat.fps = m_fps;
-	stat.mbps = m_sizeX * m_sizeY * m_fps;
+	stat.mbps = (m_sizeX * m_sizeY * m_fps) / (1024.0*1024.0);
 	stat.lostframes = 0;
 	return SUCCESS;
 #endif
 	try
 	{
-		m_grabberlist[0]->setString<StreamModule>(std::string("StatisticsSamplingSelector"), std::string("LastSecond"));
-		stat.fps = m_grabberlist[0]->getFloat<StreamModule>(std::string("StatisticsFrameRate"));
-		stat.mbps = m_lnkCnt * m_grabberlist[0]->getFloat<StreamModule>(std::string("StatisticsDataRate"));
+		m_grabberlist[0]->setString<StreamModule>("StatisticsSamplingSelector", "LastSecond");
+		stat.fps = m_grabberlist[0]->getFloat<StreamModule>("StatisticsFrameRate");
+		stat.mbps = (double)(m_lnkCnt * m_grabberlist[0]->getFloat<StreamModule>("StatisticsDataRate")) /(double)(1024.0*1024.0);
 
-		m_grabberlist[0]->setString<StreamModule>(std::string("EventSelector"), std::string("RejectedFrame")); // find how many drop frame we got
-		stat.lostframes = m_grabberlist[0]->getInteger<StreamModule>(std::string("EventCount"));
+		m_grabberlist[0]->setString<StreamModule>("EventSelector", "RejectedFrame"); // find how many drop frame we got
+		stat.lostframes = m_grabberlist[0]->getInteger<StreamModule>("EventCount");
 	}
 	catch (...)
 	{
@@ -413,7 +413,7 @@ int MultiCXPSource::SetFps(double fps)
 	double val = 1000000.0 / fps; // period in us
 	try
 	{
-		m_grabberlist[0]->setFloat<DeviceModule>(std::string("CycleMinimumPeriod"), val);
+		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", val);
 	}
 	catch (...)
 	{
@@ -422,25 +422,6 @@ int MultiCXPSource::SetFps(double fps)
 	return SUCCESS;
 }
 
-int MultiCXPSource::GetFps(double& fps)
-{
-	if (!m_init)
-		return ERROR_NOINIT;
-#ifdef DEMOMODE
-	fps = m_fps;
-	return SUCCESS;
-#endif
-	try
-	{
-		double val = m_grabberlist[0]->getFloat<DeviceModule>(std::string("CycleMinimumPeriod"));
-		fps = 1000000 / val;
-	}
-	catch (...)
-	{
-		return ERROR_PARAMACCESS;
-	}
-	return SUCCESS;
-}
 
 int MultiCXPSource::SetExposure(double exp)
 {
@@ -452,7 +433,7 @@ int MultiCXPSource::SetExposure(double exp)
 #endif
 	try 
 	{
-		m_grabberlist[0]->setFloat<RemoteModule>(std::string("ExposureTime"), exp);
+		m_grabberlist[0]->setFloat<RemoteModule>("ExposureTime", exp);
 	}
 	catch(...)
 	{
@@ -471,7 +452,7 @@ int MultiCXPSource::GetExposure(double& exp)
 #endif
 	try
 	{
-		exp = m_grabberlist[0]->getFloat<RemoteModule>(std::string("ExposureTime"));
+		exp = m_grabberlist[0]->getFloat<RemoteModule>("ExposureTime");
 	}
 	catch (...)
 	{

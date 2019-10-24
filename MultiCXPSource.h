@@ -119,7 +119,6 @@ public :
 	int GetImageInfo(ImgNfo& nfo);
 	int GetStat(GrabStat& stat);
 	int SetFps(double fps);
-	int GetFps(double& fps);
 	int SetExposure(double exp);
 	int GetExposure(double& exp);
 	int SetResolution(size_t X, size_t Y);

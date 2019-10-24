@@ -14,7 +14,13 @@ class CStreamerViewerDlg : public CDialogEx
 	MultiCXPSource source;
 		
 	void MenuGrab(bool enable);
-	void MenuView(bool enable);
+// menu View
+	void	MenuView();		// set the view menu according to the current setting
+	void	Zoom(int z);	// adjust flag for give zoom factor
+	bool	m_viewFullSize;	// need to stretch ?
+	int		m_viewZoom;		// 0 not zoom , 2,4,8,16 ( zoom in) , -2,-4,-8,-16 zoom out, 1 = fit to screen
+	bool	m_viewRatio;	// keep aspect ratio
+
 
 // Construction
 public:
@@ -54,4 +60,19 @@ public:
 	afx_msg void OnGrabberRecord();
 	afx_msg void OnGrabberStop();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+
+	double m_dFps;
+	double m_dMbps;
+	uint32_t m_iLostFrame;
+	afx_msg void OnViewFullsize();
+	afx_msg void OnViewFittoscreen();
+	afx_msg void OnViewKeepaspectratio();
+	afx_msg void OnZoominX2();
+	afx_msg void OnZoominX4();
+	afx_msg void OnZoominX8();
+	afx_msg void OnZoominX16();
+	afx_msg void OnZoomout1();
+	afx_msg void OnZoomout2();
+	afx_msg void OnZoomout3();
+	afx_msg void OnZoomout4();
 };

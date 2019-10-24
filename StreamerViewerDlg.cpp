@@ -51,6 +51,7 @@ END_MESSAGE_MAP()
 
 
 // helpers 
+
 void CStreamerViewerDlg::MenuGrab(bool enable)
 {
 	CMenu* pMenu = GetMenu();
@@ -62,18 +63,81 @@ void CStreamerViewerDlg::MenuGrab(bool enable)
 
 }
 
-void CStreamerViewerDlg::MenuView(bool enable)
+void CStreamerViewerDlg::MenuView()
 {
 	CMenu* pMenu = GetMenu();
-	UINT val = enable ? MF_ENABLED : MF_GRAYED;
-	pMenu->EnableMenuItem(ID_VIEW_FULLSIZE, val);
-	pMenu->EnableMenuItem(ID_VIEW_ZOOMIN, val);
-	pMenu->EnableMenuItem(ID_VIEW_ZOOMOUT, val);
-
+	std::vector<UINT> vids; // view menu IDs
+	vids.push_back(ID_VIEW_FULLSIZE);
+	vids.push_back(ID_VIEW_FITTOSCREEN);
+	vids.push_back(ID_VIEW_KEEPASPECTRATIO);
+	vids.push_back(ID_ZOOMIN_X2);
+	vids.push_back(ID_ZOOMIN_X4);
+	vids.push_back(ID_ZOOMIN_X8);
+	vids.push_back(ID_ZOOMIN_X16);
+	vids.push_back(ID_ZOOMOUT_1);
+	vids.push_back(ID_ZOOMOUT_2);
+	vids.push_back(ID_ZOOMOUT_3);
+	vids.push_back(ID_ZOOMOUT_4);
+	
+	// uncheck all
+	for (UINT id : vids)
+	{
+		pMenu->CheckMenuItem(id, MF_UNCHECKED);
+	}
+	// check what is needed
+	if (m_viewFullSize)
+		pMenu->CheckMenuItem(ID_VIEW_FULLSIZE, MF_CHECKED);
+	if (m_viewRatio)
+		pMenu->CheckMenuItem(ID_VIEW_KEEPASPECTRATIO, MF_CHECKED);
+	if (m_viewZoom != 0)
+	{
+		UINT id = ID_ZOOMIN_X2;
+		switch (m_viewZoom)
+		{
+		case 1:
+			id = ID_VIEW_FITTOSCREEN;
+			break;
+		case 2:
+			id = ID_ZOOMIN_X2;
+			break;
+		case 4:
+			id = ID_ZOOMIN_X4;
+			break;
+		case 8:
+			id = ID_ZOOMIN_X8;
+			break;
+		case 16:
+			id = ID_ZOOMIN_X16;
+			break;
+		case -2:
+			id = ID_ZOOMOUT_1;
+			break;
+		case -4:
+			id = ID_ZOOMOUT_2;
+			break;
+		case -8:
+			id = ID_ZOOMOUT_3;
+			break;
+		case -16:
+			id = ID_ZOOMOUT_4;
+			break;
+		default:
+			break;
+		}
+		pMenu->CheckMenuItem(id, MF_CHECKED);
+	}
 }
 
 CStreamerViewerDlg::CStreamerViewerDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_STREAMERVIEWER_DIALOG, pParent)
+
+	, m_dFps(0)
+	, m_dMbps(0)
+	, m_iLostFrame(0)
+	, m_viewFullSize(true)
+	, m_viewZoom(0)		
+	, m_viewRatio(false)
+
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	m_bitmapInfoCOL = nullptr;
@@ -113,10 +177,18 @@ void CStreamerViewerDlg::getImgnDisplay()
 		if (m_reDraw)
 		{
 			m_reDraw = false;
-/*			CWnd* pic = GetDlgItem(IDC_STPICTURE);
-			pic->InvalidateRect(NULL); // redraw whole client area*/
-			InvalidateRect(NULL);
+			CWnd* pic = GetDlgItem(IDC_STPICTURE);
+			CRect rect;
+			pic->GetClientRect(&rect);
+			InvalidateRect(&rect,false); 
 		}
+
+		GrabStat s;
+		source.GetStat(s);
+		m_iLostFrame = (uint32_t)s.lostframes;
+		m_dFps = floor(s.fps*100)/100.0;
+		m_dMbps = floor(s.mbps*100)/100.0;
+		UpdateData(FALSE);
 	}
 
 	//cimg_library::CImg<unsigned char> img(nfo.sizeX, nfo.sizeY, 1, nfo.color ? 3 : 1, 0);
@@ -135,6 +207,10 @@ void CStreamerViewerDlg::check(int code, CString fct)
 void CStreamerViewerDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+
+	DDX_Text(pDX, IDC_EDT_FPS, m_dFps);
+	DDX_Text(pDX, IDC_EDT_MPS, m_dMbps);
+	DDX_Text(pDX, IDC_EDT_LOSTFRAME, m_iLostFrame);
 }
 
 BEGIN_MESSAGE_MAP(CStreamerViewerDlg, CDialogEx)
@@ -146,6 +222,17 @@ BEGIN_MESSAGE_MAP(CStreamerViewerDlg, CDialogEx)
 	ON_COMMAND(ID_GRABBER_RECORD, &CStreamerViewerDlg::OnGrabberRecord)
 	ON_COMMAND(ID_GRABBER_STOP, &CStreamerViewerDlg::OnGrabberStop)
 	ON_WM_TIMER()
+	ON_COMMAND(ID_VIEW_FULLSIZE, &CStreamerViewerDlg::OnViewFullsize)
+	ON_COMMAND(ID_VIEW_FITTOSCREEN, &CStreamerViewerDlg::OnViewFittoscreen)
+	ON_COMMAND(ID_VIEW_KEEPASPECTRATIO, &CStreamerViewerDlg::OnViewKeepaspectratio)
+	ON_COMMAND(ID_ZOOMIN_X2, &CStreamerViewerDlg::OnZoominX2)
+	ON_COMMAND(ID_ZOOMIN_X4, &CStreamerViewerDlg::OnZoominX4)
+	ON_COMMAND(ID_ZOOMIN_X8, &CStreamerViewerDlg::OnZoominX8)
+	ON_COMMAND(ID_ZOOMIN_X16, &CStreamerViewerDlg::OnZoominX16)
+	ON_COMMAND(ID_ZOOMOUT_1, &CStreamerViewerDlg::OnZoomout1)
+	ON_COMMAND(ID_ZOOMOUT_2, &CStreamerViewerDlg::OnZoomout2)
+	ON_COMMAND(ID_ZOOMOUT_3, &CStreamerViewerDlg::OnZoomout3)
+	ON_COMMAND(ID_ZOOMOUT_4, &CStreamerViewerDlg::OnZoomout4)
 END_MESSAGE_MAP()
 
 
@@ -168,7 +255,9 @@ BOOL CStreamerViewerDlg::OnInitDialog()
 	CMenu* pMenu = GetMenu();
 	pMenu->EnableMenuItem(ID_CAMERA_PARAMETERS, MF_GRAYED);
 	MenuGrab(false);
-	MenuView(false);
+	MenuView();
+
+
 	SetWindowText(L"Streamer Viewer");
 
 	/*if (pSysMenu != nullptr)
@@ -183,8 +272,6 @@ BOOL CStreamerViewerDlg::OnInitDialog()
 			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
 		}
 	}*/
-
-
 
 	// Set the icon for this dialog.  The framework does this automatically
 	//  when the application's main window is not a dialog
@@ -277,27 +364,73 @@ void CStreamerViewerDlg::OnPaint()
 		{
 
 			CWnd *pic= GetDlgItem(IDC_STPICTURE);
-			CDC* pdc = pic->GetDC();
+			CDC* pdc = pic->GetWindowDC();
+
 			// color image ?
+			BITMAPINFO* bmpNfo;
 			if (m_nfo.color)
+				bmpNfo = m_bitmapInfoCOL;
+			else
+				bmpNfo = m_bitmapInfoBW;
+
+			bmpNfo->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
+			bmpNfo->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expect from bottom to up
+			
+															  // DRAW
+			if (m_viewFullSize)
 			{
-				m_bitmapInfoCOL->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
-				m_bitmapInfoCOL->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expect from bottom to up
 				// draw the image
 				SetDIBitsToDevice(pdc->GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
 					0, 0, 0, (UINT)m_nfo.sizeY,
-					(void*)m_pdata, m_bitmapInfoCOL, DIB_RGB_COLORS);
+					(void*)m_pdata, bmpNfo, DIB_RGB_COLORS);
 			}
 			else
 			{
-				m_bitmapInfoBW->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
-				m_bitmapInfoBW->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expect from bottom to up
-				// draw the image
-				SetDIBitsToDevice(pdc->GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
-					0, 0, 0, (UINT)m_nfo.sizeY,
-					(void*)m_pdata, m_bitmapInfoBW, DIB_RGB_COLORS);
+				size_t oriw = m_nfo.sizeX;
+				size_t orih = m_nfo.sizeY;
+
+				CRect rec;
+				pic->GetClientRect(rec);
+				size_t desw = rec.Width();
+				size_t desh = rec.Height();
+				if (m_viewRatio)
+				{
+					// recompute ration
+					float rx = (float)oriw / (float)desw;
+					float ry = (float)orih / (float)desh;
+					if (rx > ry)
+					{
+						desh = (size_t)((float)orih / rx);
+					}
+					else
+					{
+						desw = (size_t)((float)oriw / ry);
+					}
+				}
+
+				// build in zoom factor
+				if (m_viewZoom > 1)
+				{
+					desw = oriw * m_viewZoom;
+					desh = orih * m_viewZoom;
+				}
+				if (m_viewZoom < -1)
+				{
+					desw = oriw / (-1 * m_viewZoom);
+					desh = orih / (-1 * m_viewZoom);
+
+				}
+
+				// strech image
+				SetStretchBltMode(pdc->GetSafeHdc(), HALFTONE);		// best result but slow
+				POINT pt;
+				SetBrushOrgEx(pdc->GetSafeHdc(), 0, 0, &pt);		// realign brush for proper streching
+				StretchDIBits(pdc->GetSafeHdc(), 1, 1, (int)desw - 1, (int)desh - 1, 0, 0, (int)oriw, (int)orih,
+					(void*) m_pdata, bmpNfo, DIB_RGB_COLORS, SRCCOPY); // strech image
+					//m_imagePointer[i], m_bitmapInfoCOL, DIB_RGB_COLORS, SRCCOPY); // strech image
 
 			}
+
 			pic->ReleaseDC(pdc);
 
 
@@ -353,7 +486,7 @@ void CStreamerViewerDlg::OnGrabberStart()
 	pMenu->EnableMenuItem(ID_GRABBER_START, MF_GRAYED);
 	pMenu->EnableMenuItem(ID_GRABBER_STOP, MF_ENABLED);
 	pMenu->EnableMenuItem(ID_GRABBER_RECORD, MF_ENABLED);
-	MenuView(true);
+	//MenuView(true);
 
 }
 
@@ -394,4 +527,101 @@ void CStreamerViewerDlg::OnTimer(UINT_PTR nIDEvent)
 		break;
 	}
 	CDialogEx::OnTimer(nIDEvent);
+}
+
+
+void CStreamerViewerDlg::OnViewFullsize()
+{
+	if (m_viewFullSize)
+		return; // noting to do
+	
+	m_viewFullSize = true;
+	m_viewRatio = false;
+	m_viewZoom = 0;
+	// update menu items
+	MenuView();
+
+	// when the displied image is small and we go back to 1:1 there might be some clutter, clean it
+	InvalidateRect(NULL);
+}
+
+
+void CStreamerViewerDlg::OnViewFittoscreen()
+{
+	if (m_viewZoom == 1)
+		return; //nothing to do
+	m_viewFullSize = false;
+	m_viewZoom = 1;
+	// update menu items
+	MenuView();
+}
+
+
+void CStreamerViewerDlg::OnViewKeepaspectratio()
+{
+	m_viewRatio = !(m_viewRatio);
+	if (m_viewRatio)	// if we active the aspect ratio fit to scree need to be on
+		m_viewZoom = 1;
+	MenuView();
+	// when aspect ratio is activated there might be some clutter on the display, just clean everything
+	if (m_viewRatio)
+		InvalidateRect(NULL);
+}
+
+void CStreamerViewerDlg::Zoom(int z)
+{
+	if (m_viewZoom == z)
+		return;
+	m_viewFullSize = false;
+	m_viewZoom = z;
+	m_viewRatio = false;
+	MenuView();
+	InvalidateRect(NULL);
+}
+
+void CStreamerViewerDlg::OnZoominX2()
+{
+	Zoom(2);
+}
+
+
+void CStreamerViewerDlg::OnZoominX4()
+{
+	Zoom(4);
+}
+
+
+void CStreamerViewerDlg::OnZoominX8()
+{
+	Zoom(8);
+}
+
+
+void CStreamerViewerDlg::OnZoominX16()
+{
+	Zoom(16);
+}
+
+
+void CStreamerViewerDlg::OnZoomout1()
+{
+	Zoom(-2);
+}
+
+
+void CStreamerViewerDlg::OnZoomout2()
+{
+	Zoom(-4);
+}
+
+
+void CStreamerViewerDlg::OnZoomout3()
+{
+	Zoom(-8);
+}
+
+
+void CStreamerViewerDlg::OnZoomout4()
+{
+	Zoom(-16);
 }
