@@ -1,8 +1,219 @@
 #include "pch.h"
 #include "MultiCXPSource.h"
 
+MemoryManager::MemoryManager()
+{
+	m_data.clear();
+	m_buffers.clear();
+	m_currentBuffer = 0;
+	m_bufferSize = 0;
+}
+
+MemoryManager::~MemoryManager()
+{
+	if (m_buffers.size() > 0)
+	{
+		for (void* b : m_buffers)
+		{
+			VirtualFree(b, 0, MEM_RELEASE);
+		}
+		m_buffers.clear();
+		m_data.clear();
+	}
+}
+
+size_t MemoryManager::Init(float usage, size_t buffersize)
+{
+	// todo if already init free old buffers
+
+	m_bufferSize = buffersize;
+
+	// find how much physical memory is available 
+	MEMORYSTATUSEX status;
+	status.dwLength = sizeof(status);
+	GlobalMemoryStatusEx(&status);
+
+	// find how many buffer can be allocated 
+	if (usage > 0.9)
+		usage = 0.9;
+	if (usage < 0.05)
+		usage = 0.05;
+
+	size_t size = (ceil((double)buffersize / 1024)) * 1024;
+	size = (size < 1024) ? 1024 : size;
+	double fcount = floor(((double)status.ullAvailPhys * usage) / 1024) / ((double)size / 1024);
+	size_t count = (size_t)floor(fcount);
+
+	// allocate all buffers
+	for (int i = 0; i < count; i++)
+	{
+
+		void* data = nullptr;
+		data = (void*)VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+		if (data == nullptr)
+		{
+			// this should not happened ... prematurly run out of memory
+			// keep what ever we could get
+			break;
+		}
+		m_buffers.push_back(data);
+	}
+	return m_buffers.size();
+}
+
+bool MemoryManager::SetBuffer(void* buffer, uint64_t time)
+{
+	// not enought buffers
+	if (m_buffers.size() < 1)
+		return false;
+	// all buffers used
+	if (m_buffers.size() <= m_data.size())
+		return false;
+
+	// find free spot in the data vector
+	void* buf = m_buffers[m_data.size()];
+	// copy the data
+	memcpy(buf, buffer, m_bufferSize);
+
+	// store pointer and time stamps
+	m_data.push_back(std::make_pair(time, buf));
+
+}
+
+bool MemoryManager::GetBuffer(void** buffer, int64_t increment_us, uint64_t& time)
+{
+	if (m_isStoring)
+		return false;	// still storing
+	if (m_data.size() == 0)
+		return false;	// no data
+
+	uint64_t ft64;
+	// are we out of boundary
+	if (m_currentBuffer >= m_data.size())
+	{
+		time = (*m_data.end()).first;
+		m_currentBuffer = m_data.size();
+		return true;
+	}
+
+	// find current sample
+	ft64 = m_data[m_currentBuffer].first;
+	ft64 += (increment_us * 10);
+	if (ft64 > 0x8000000000000000)
+		return false;
+
+	// search the right item in the list
+	std::vector<std::pair<uint64_t, void*>>::iterator it = std::lower_bound(m_data.begin(), m_data.end(), ft64);
+	// retrieve the buffer
+	*buffer = (*it).second;
+	// retrieve the time
+	time = (*it).first;
+	m_currentBuffer = it - m_data.begin();	// keep current index in case you want to pause and then step in ( using getNext buffer)
+	return true;
+}
+
+bool MemoryManager::SeekBuffer(void** buffer, int64_t frombegin_us, uint64_t& time)
+{
+	if (m_isStoring)
+		return false;	// still storing
+	if (m_data.size() == 0)
+		return false;	// no data
+
+	uint64_t ft64;
+
+	// find first sample
+	ft64 = m_data[0].first;
+	ft64 += (frombegin_us * 10);
+	if (ft64 > 0x8000000000000000)
+		return false;
+
+	// search the right item in the list
+	std::vector<std::pair<uint64_t, void*>>::iterator it = std::lower_bound(m_data.begin(), m_data.end(), ft64);
+	// retrieve the buffer
+	*buffer = (*it).second;
+	// retrieve the time
+	time = (*it).first;
+	m_currentBuffer = it - m_data.begin();	// keep current index in case you want to pause and then step in ( using getNext buffer)
+	return true;
+}
+
+bool MemoryManager::GetNextBuffer(void** buffer, uint64_t& time)
+{
+	if (m_isStoring)
+		return false;	// still storing
+	if (m_data.size() == 0)
+		return false;	// no data
+	if (m_currentBuffer >= m_data.size())
+		return false;	// no more buffers
+
+	*buffer = (m_data[m_currentBuffer]).second;
+	time = (m_data[m_currentBuffer]).first;
+	m_currentBuffer++;
+	return true;
+}
 
 
+bool MemoryManager::StartStoring()
+{
+	if (m_isStoring)
+		return false;
+	else
+	{
+		m_isStoring = true;
+		if (m_data.size() > 0)
+		{
+			// we have already data ... delete them
+			m_data.clear();
+			m_currentBuffer = 0;
+		}
+
+	}
+	return true;
+}
+
+bool MemoryManager::StopStoring()
+{
+	if (!m_isStoring)
+		return false;
+
+	// make sure we can access the data
+	m_isStoring = false;
+	m_currentBuffer = 0;
+	if (m_data.size > 1)
+	{
+		// make sure everything is sorted so we can search the data 
+		std::sort(m_data.begin(), m_data.end());
+	}
+	return true;
+}
+
+bool MemoryManager::GetRange(uint64_t& ms, uint64_t& begin, uint64_t& end)
+{
+	if (m_isStoring)
+		return false;
+	if (m_data.size() == 0)
+		return false;
+	// get range
+	uint64_t range = (*(m_data.end())).first - (*(m_data.begin())).first;
+	ms = range / 10;
+
+	// get begin
+	begin = (*m_data.begin()).first;
+
+	// get end
+	end = (*m_data.end()).first;
+
+	return true;
+}
+
+bool MemoryManager::IsStoring()
+{
+	return m_isStoring;
+}
+
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
 void acqThread(MultiCXPSource* source)
 {
 	size_t s = source->m_sizeX * source->m_sizeY * (source->m_color ? 3 : 1);
@@ -283,7 +494,7 @@ int MultiCXPSource::Start()
 	return SUCCESS;
 #endif
 	// reset all stream counters
-	m_grabberlist[0]->execute<StreamModule>(std::string("EventCountResetAll"));
+	m_grabberlist[0]->execute<StreamModule>("EventCountResetAll");
 	
 	// start acq thread
 	m_brun = true;
@@ -297,6 +508,20 @@ int MultiCXPSource::Start()
 
 int MultiCXPSource::Record()
 {
+	if (!m_brun)
+		Start();		// did we start the acquisition?
+	if (!m_bRec)
+	{					// are we already recording
+		if (nullptr == m_mm)
+		{
+			// todo make sure we can allocate the memory with no error
+			m_mm = new MemoryManager();
+			m_buffcount = m_mm->Init(0.75, m_sizeX * m_sizeY * (m_color ? 3 : 1));
+			
+		}
+		m_mm->StartStoring();
+		m_bRec = true;
+	}
 	return 0;
 }
 
@@ -344,6 +569,10 @@ int MultiCXPSource::GetImage(UINT8** data)
 	}
 	offset++;
 	*data = m_buff;
+	if (m_bRec)
+	{
+		m_mm->SetBuffer(m_buff, 0x00);
+	}
 	return SUCCESS;
 #endif
 
