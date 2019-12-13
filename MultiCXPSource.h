@@ -1,6 +1,6 @@
 #pragma once
 
-#include "c:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
+#include "d:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
 #include "error.h"
 #include <thread>
 #include <string>
@@ -11,11 +11,13 @@
 
 using namespace Euresys;
 
+typedef std::pair<uint64_t, void*> dpair;
+
 class MemoryManager
 {
 private:
 	std::vector<void*>		m_buffers;		// allocated buffers
-	std::vector<std::pair<uint64_t, void*>> m_data;
+	std::vector<dpair> m_data;
 	int m_currentBuffer;
 	size_t m_bufferSize;
 	bool m_isStoring;
@@ -83,6 +85,7 @@ private:
 	// 0 unknow, 1 S990, 2 S640, 3 S710
 	uint8_t m_cameratype; 
 	uint32_t m_bufferCount;
+	bool m_bRecDone;
 
 	int buildGrabbers();
 	int configS990(size_t pitch, size_t payload);
@@ -109,6 +112,7 @@ public :
 		, m_bRec(false)
 		, m_mm(nullptr)
 		, m_buffcount(0)
+		, m_bRecDone(false)
 	{
 		// constructor
 		m_cameracountlist.clear();
@@ -150,6 +154,7 @@ public :
 	int Init(CamNfo& nfo);
 	int Start();
 	int Record();
+	bool IsRecording();
 	int Stop();
 	int GetImage(UINT8 ** data);
 	int GetImageInfo(ImgNfo& nfo);
@@ -158,8 +163,9 @@ public :
 	int SetExposure(double exp);
 	int GetExposure(double& exp);
 	int SetResolution(size_t X, size_t Y);
-
-
+	int GetRecordedRange(uint64_t& buffercount, uint64_t& start, uint64_t& end);
+	int GetRecordImageAt(UINT8** data, uint64_t& at);
+	int GetRecordedImageNext(UINT8** data, uint64_t& at);
 
 
 };

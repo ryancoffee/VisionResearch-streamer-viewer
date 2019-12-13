@@ -7,6 +7,7 @@ MemoryManager::MemoryManager()
 	m_buffers.clear();
 	m_currentBuffer = 0;
 	m_bufferSize = 0;
+	m_isStoring = false;
 }
 
 MemoryManager::~MemoryManager()
@@ -35,11 +36,11 @@ size_t MemoryManager::Init(float usage, size_t buffersize)
 
 	// find how many buffer can be allocated 
 	if (usage > 0.9)
-		usage = 0.9;
+		usage = (float)0.9;
 	if (usage < 0.05)
-		usage = 0.05;
+		usage = (float)0.05;
 
-	size_t size = (ceil((double)buffersize / 1024)) * 1024;
+	size_t size = (size_t)(ceil((double)buffersize / 1024)) * 1024;
 	size = (size < 1024) ? 1024 : size;
 	double fcount = floor(((double)status.ullAvailPhys * usage) / 1024) / ((double)size / 1024);
 	size_t count = (size_t)floor(fcount);
@@ -78,7 +79,8 @@ bool MemoryManager::SetBuffer(void* buffer, uint64_t time)
 
 	// store pointer and time stamps
 	m_data.push_back(std::make_pair(time, buf));
-
+	
+	return true;
 }
 
 bool MemoryManager::GetBuffer(void** buffer, int64_t increment_us, uint64_t& time)
@@ -93,7 +95,7 @@ bool MemoryManager::GetBuffer(void** buffer, int64_t increment_us, uint64_t& tim
 	if (m_currentBuffer >= m_data.size())
 	{
 		time = (*m_data.end()).first;
-		m_currentBuffer = m_data.size();
+		m_currentBuffer = (int)m_data.size();
 		return true;
 	}
 
@@ -102,14 +104,15 @@ bool MemoryManager::GetBuffer(void** buffer, int64_t increment_us, uint64_t& tim
 	ft64 += (increment_us * 10);
 	if (ft64 > 0x8000000000000000)
 		return false;
-
+	void* ptr = nullptr;
 	// search the right item in the list
-	std::vector<std::pair<uint64_t, void*>>::iterator it = std::lower_bound(m_data.begin(), m_data.end(), ft64);
+	std::vector<dpair>::iterator it = std::lower_bound(m_data.begin(), m_data.end(), std::make_pair(ft64, ptr), 
+		[](dpair test, dpair val) -> bool { return (test.first < val.first); });
 	// retrieve the buffer
 	*buffer = (*it).second;
 	// retrieve the time
 	time = (*it).first;
-	m_currentBuffer = it - m_data.begin();	// keep current index in case you want to pause and then step in ( using getNext buffer)
+	m_currentBuffer = (int)(it - m_data.begin());	// keep current index in case you want to pause and then step in ( using getNext buffer)
 	return true;
 }
 
@@ -128,13 +131,15 @@ bool MemoryManager::SeekBuffer(void** buffer, int64_t frombegin_us, uint64_t& ti
 	if (ft64 > 0x8000000000000000)
 		return false;
 
+	void* ptr = nullptr;
 	// search the right item in the list
-	std::vector<std::pair<uint64_t, void*>>::iterator it = std::lower_bound(m_data.begin(), m_data.end(), ft64);
+	std::vector<std::pair<uint64_t, void*>>::iterator it = std::lower_bound(m_data.begin(), m_data.end(), std::make_pair(ft64,ptr),
+		[](dpair test, dpair val) -> bool { return (test.first < val.first); });
 	// retrieve the buffer
 	*buffer = (*it).second;
 	// retrieve the time
 	time = (*it).first;
-	m_currentBuffer = it - m_data.begin();	// keep current index in case you want to pause and then step in ( using getNext buffer)
+	m_currentBuffer = (int)(it - m_data.begin());	// keep current index in case you want to pause and then step in ( using getNext buffer)
 	return true;
 }
 
@@ -180,7 +185,7 @@ bool MemoryManager::StopStoring()
 	// make sure we can access the data
 	m_isStoring = false;
 	m_currentBuffer = 0;
-	if (m_data.size > 1)
+	if (m_data.size() > 1)
 	{
 		// make sure everything is sorted so we can search the data 
 		std::sort(m_data.begin(), m_data.end());
@@ -525,6 +530,11 @@ int MultiCXPSource::Record()
 	return 0;
 }
 
+bool MultiCXPSource::IsRecording()
+{
+	return m_bRec;
+}
+
 int MultiCXPSource::Stop()
 {
 	if (!m_brun)
@@ -571,7 +581,14 @@ int MultiCXPSource::GetImage(UINT8** data)
 	*data = m_buff;
 	if (m_bRec)
 	{
-		m_mm->SetBuffer(m_buff, 0x00);
+		LARGE_INTEGER li;
+		QueryPerformanceCounter(&li);
+		if (!m_mm->SetBuffer(m_buff, li.QuadPart))
+		{
+			m_bRec = false;
+			m_bRecDone = true;
+			m_mm->StopStoring();
+		}
 	}
 	return SUCCESS;
 #endif
@@ -707,4 +724,34 @@ int MultiCXPSource::SetResolution(size_t X, size_t Y)
 	return SUCCESS;
 #endif
 	return ERROR_NOTIMPLEMENTED;
+}
+
+int MultiCXPSource::GetRecordedRange(uint64_t& buffercount, uint64_t& start, uint64_t& end)
+{
+	if (!m_init)
+		return ERROR_NOINIT;
+	uint64_t ms;
+	if (!m_mm->GetRange(ms, start, end))
+		return ERROR_PARAMOUTOFRANGE;
+	buffercount = m_buffcount;
+	return SUCCESS;
+}
+
+int MultiCXPSource::GetRecordImageAt(UINT8** data, uint64_t& at)
+{
+	if(!m_bRecDone)
+		return ERROR_PARAMOUTOFRANGE;
+	if (!m_mm->SeekBuffer((void**)data, at, at))
+		return ERROR_PARAMACCESS;
+	return SUCCESS;
+}
+
+int MultiCXPSource::GetRecordedImageNext(UINT8** data, uint64_t& at)
+{
+	if (!m_bRecDone)
+		return ERROR_PARAMOUTOFRANGE;
+	if (!m_mm->GetNextBuffer((void**)data, at))
+		return ERROR_PARAMACCESS;
+	return SUCCESS;
+	return 0;
 }
