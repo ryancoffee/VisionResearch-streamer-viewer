@@ -279,13 +279,12 @@ int MultiCXPSource::buildGrabbers()
 	m_pgentl->memento(std::string("Source open driver"));
 
 	// find how many device we have
-	int devCnt = 0;
 	EGrabber<CallbackOnDemand>* grab;
+
 	try
 	{
 		gc::TL_HANDLE tlh = m_pgentl->tlOpen();
-		int num = m_pgentl->tlGetNumInterfaces(tlh);						// find interfaces num
-
+		int num = m_pgentl->tlGetNumInterfaces(tlh);					// find interfaces num
 
 		// per interface
 		for (int iid = 0; iid < num; iid++)								// get all interface
@@ -293,27 +292,40 @@ int MultiCXPSource::buildGrabbers()
 			std::string ifid = m_pgentl->tlGetInterfaceID(tlh, iid);
 			gc::IF_HANDLE ifh = m_pgentl->tlOpenInterface(tlh, ifid);
 
-			m_cameracountlist.push_back(m_pgentl->ifGetNumDevices(ifh));		// get num devices
+			int count = checkHardware(ifh);
+
+			if ( count && 0x1)
+			{
+				m_cameraList.push_back(std::make_pair(iid, 0));
+			}
+			if ( count && 0x2)
+			{
+				m_cameraList.push_back(std::make_pair(iid, 1));
+			}
 
 			m_pgentl->ifClose(ifh);										// free Interfaces
-			devCnt++;
+
 		}
 		m_pgentl->tlClose(tlh);											// close all handles  as EGrabber need them
 		m_pgentl->memento(std::string("GetGENTL: retrieved board/camera count"));
 
-
-		//per device
-		for (int iid = 0; iid < devCnt; iid++)
+		//try to create the devices
+		for (std::pair<int,int> cam : m_cameraList)
 		{
-
-			for (int did = 0; did < m_cameracountlist[iid]; did++)
+			std::ostringstream os;
+			os << "----- Create Grabber " << (cam.first + 1) << "/" << m_cameraList.size() << " , " << (cam.second + 1);
+			m_pgentl->memento(os.str());
+			try
 			{
-				std::ostringstream os;
-				os << "----- Create Grabber " << (iid + 1) << "/" << devCnt << " , " << (did + 1) << "/" << m_cameracountlist[iid] << std::endl;
-				m_pgentl->memento(os.str());
-				grab = new EGrabber<CallbackOnDemand>(*m_pgentl, iid, did);
+				grab = new EGrabber<CallbackOnDemand>(*m_pgentl, cam.first, cam.second);
 				m_grabberlist.push_back(grab);  // save devices
 			}
+			catch (...)
+			{
+				os << "----- Create Grabber filed for " << (cam.first + 1) << "/" << m_cameraList.size() << " , " << (cam.second + 1);
+				m_pgentl->memento(os.str());
+			}
+			
 		}
 	}
 	catch (...)
@@ -421,6 +433,88 @@ int MultiCXPSource::configGrabbers()
 	}
 
 	return ret;
+}
+
+bool MultiCXPSource::checkBank(gc::IF_HANDLE ifh, int bank )
+{
+	std::vector<std::string> s1{ "A","B","C","D" };
+	std::vector<std::string> s2{ "E","F","G","H" };
+
+	std::vector<std::string> val{ "Master", "Extention1", "Extention2", "Extention3" };
+	std::vector<std::string> s;
+	if (1 == bank)
+	{
+		s = s1;
+	}
+	else if (2 == bank)
+	{
+		s = s2;
+	}
+	else
+		return false;
+
+	std::string status;
+	for (int i = 0; i < val.size(); i++)
+	{
+		m_pgentl->genapiSetString(ifh, "CxpHostConnectionSelector", s[i]);
+		status = m_pgentl->genapiGetString(ifh, "CxpConnectionState");
+		// cxp detected ?
+		if (status.compare("Detected"))
+		{
+			std::ostringstream os;
+			os << "CheckHardware : connector " << s[i] << " not detected";
+			m_pgentl->memento(os.str());
+			return false;
+		}
+
+		status = m_pgentl->genapiGetString(ifh, "CxpDeviceConnectionID");
+		if (status.compare(6,(val[i]).length(), val[i]))
+		{
+			std::ostringstream os;
+			os << "CheckHardware : connector " << s[i] << " is not on " << val[i];
+			m_pgentl->memento(os.str());
+			return false;
+
+		}
+	}
+
+	return true;
+}
+
+// check the detected hardware and seen if a camera is connected
+// 0 => no camera, 1 camera on bank 1, 2 camera on bank 2, 3 camera on bank 1 and 2
+
+int MultiCXPSource::checkHardware(gc::IF_HANDLE ifh)
+{
+	std::string pc = m_pgentl->genapiGetString(ifh, "ProductCode");
+	int firm = m_pgentl->genapiGetInteger(ifh, "FirmwareVariant");
+	int count = 0;
+
+	if (pc.compare("PC3602") == 0)
+	{
+		m_pgentl->memento("CheckHardware : Found Coaxlink Octo"); 
+		if (firm != 2)
+		{
+			m_pgentl->memento("CheckHardware : Found Coaxlink Octo with wrong firmware variant");
+			return 0;
+		}
+		if (checkBank(ifh, 1))
+			count |= 0x01;
+		if (checkBank(ifh, 2))
+			count |= 0x02;
+	}
+	if (pc.compare("PC1633") == 0)
+	{
+		m_pgentl->memento("CheckHardware : Found Coaxlink Quad G3");
+		if (firm != 1)
+		{
+			m_pgentl->memento("CheckHardware : Found Coaxlink Quad G3 with wrong firmware variant");
+			return 0;
+		}
+		if (checkBank(ifh, 1))
+			count = 1;
+	}
+	return count;
 }
 
 int MultiCXPSource::Init(CamNfo& nfo)

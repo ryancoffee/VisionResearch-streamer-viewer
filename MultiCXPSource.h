@@ -1,6 +1,6 @@
 #pragma once
 
-#include "d:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
+#include "c:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
 #include "error.h"
 #include <thread>
 #include <string>
@@ -81,7 +81,7 @@ private:
 	bool m_init;
 	EGenTL* m_pgentl;
 	std::thread* m_acqthread;
-	std::vector<int> m_cameracountlist;
+	std::vector<std::pair<int, int>> m_cameraList;
 	// 0 unknow, 1 S990, 2 S640, 3 S710
 	uint8_t m_cameratype; 
 	uint32_t m_bufferCount;
@@ -91,6 +91,9 @@ private:
 	int configS990(size_t pitch, size_t payload);
 	int configS640(size_t pitch, size_t payload);
 	int configGrabbers();
+	bool checkBank(gc::IF_HANDLE ifh, int bank);
+	int checkHardware(gc::IF_HANDLE ifh); // Check if we have an Octo or a quad G3 and if camera is properly connected
+
 #ifdef DEMOMODE
 	double  m_exp;
 	double	m_fps;
