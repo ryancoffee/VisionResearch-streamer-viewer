@@ -538,10 +538,6 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	if (ret != SUCCESS)
 		return ret;
 
-	// TODO : remove all frame grabber that are not QUAD or OCTO
-
-
-	// TODO : check that all grabber are connected to the same camera
 
 	// TODO : order the grabber 1 Bank -> Bank 4
 
