@@ -435,12 +435,45 @@ int MultiCXPSource::configGrabbers()
 	return ret;
 }
 
+uint8_t MultiCXPSource::findCameraModel(std::string name, CamNfo& nfo)
+{
+	uint8_t ret = 0;
+	if (name.find("S990") != std::string::npos)
+	{
+		// this is a S990
+		nfo.name = L"S990";
+		ret = 1;
+		m_pgentl->memento("Found S990");
+	}
+	else if (name.find("S640") != std::string::npos)
+	{
+		// this is a S640
+		nfo.name = L"S640";
+		ret = 2;
+		m_pgentl->memento("Found S640");
+	}
+	else if (name.find("S710") != std::string::npos)
+	{
+		nfo.name = L"S710";
+		ret = 3;
+		m_pgentl->memento("Found S710, what now ?");
+	}
+	else
+	{
+		nfo.name = L"unknown camera";
+		ret = 0;
+		m_pgentl->memento("Found unknown camera");
+		m_pgentl->memento(name);
+	}
+	return ret;
+}
+
 bool MultiCXPSource::checkBank(gc::IF_HANDLE ifh, int bank )
 {
 	std::vector<std::string> s1{ "A","B","C","D" };
 	std::vector<std::string> s2{ "E","F","G","H" };
 
-	std::vector<std::string> val{ "Master", "Extention1", "Extention2", "Extention3" };
+	std::vector<std::string> val{ "Master", "Extension1", "Extension2", "Extension3" };
 	std::vector<std::string> s;
 	if (1 == bank)
 	{
@@ -468,7 +501,7 @@ bool MultiCXPSource::checkBank(gc::IF_HANDLE ifh, int bank )
 		}
 
 		status = m_pgentl->genapiGetString(ifh, "CxpDeviceConnectionID");
-		if (status.compare(6,(val[i]).length(), val[i]))
+		if (status.compare(8,(val[i]).length(), val[i]))
 		{
 			std::ostringstream os;
 			os << "CheckHardware : connector " << s[i] << " is not on " << val[i];
@@ -487,7 +520,7 @@ bool MultiCXPSource::checkBank(gc::IF_HANDLE ifh, int bank )
 int MultiCXPSource::checkHardware(gc::IF_HANDLE ifh)
 {
 	std::string pc = m_pgentl->genapiGetString(ifh, "ProductCode");
-	int firm = m_pgentl->genapiGetInteger(ifh, "FirmwareVariant");
+	int firm = (int) m_pgentl->genapiGetInteger(ifh, "FirmwareVariant");
 	int count = 0;
 
 	if (pc.compare("PC3602") == 0)
@@ -531,47 +564,135 @@ int MultiCXPSource::Init(CamNfo& nfo)
 		return ERROR_NOMEMORY;
 	return SUCCESS;
 #endif
-	nfo.name = L" S640";
+	nfo.name = L"unknown";
 	nfo.lnkCount = 4; 
 	// open driver 
 	int ret = buildGrabbers();
 	if (ret != SUCCESS)
 		return ret;
 
+	// what camera do we have ? let check the camera name 
+	try
+	{
+		for (codT* g : m_grabberlist)
+		{
+			std::string name = g->getString<RemoteModule>("DeviceModelName");
+			m_cameratype = findCameraModel(name, nfo);
+			if (m_cameratype)
+				break;		// we found a compilant camera
+		}
+		if (0 == m_cameratype)
+		{
+			// found nothing compliant
+			m_pgentl->memento("Could not find any camera");
+			return ERROR_UNKNOWNCAMERA;
+		}
+		// how many grabber are from this type ?
+		size_t s = m_grabberlist.size();
+		if (s > 1)
+		{
+			for (int i = s - 1; i > -1; i--)
+			{
+				CamNfo nfo;
+				std::string name = m_grabberlist[i]->getString<RemoteModule>("DeviceModelName");
+				uint8_t type = findCameraModel(name, nfo);
+				if (type != m_cameratype)
+				{
+					// this camera is not what we expect , remove it from the list
+					codT* g = m_grabberlist[i];
+					delete g;
+					g = nullptr;
+					m_grabberlist.erase(m_grabberlist.begin() + i);
+				}
+			}
+
+		}
+
+		// we should have a least one grabber left
+		s = m_grabberlist.size();
+		if (s < 1)
+		{
+			// some thing went wrong
+			m_pgentl->memento("Failed : no more compatible camera ");
+			return ERROR_UNKNOWNCAMERA;
+		}
+
+	}
+	catch(...)
+	{
+		return ERROR_UNKNOWNCAMERA;
+	}
 
 	// TODO : order the grabber 1 Bank -> Bank 4
 
 	
 	// configure for acquisition
-	m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
-	m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
-	m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
-	m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 20000.0);  // set the trigger rate to 50 Hz
-	m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap","True"); // camera needs 2 trigger to start
-	
+	try
+	{
+		m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
+		m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
+		m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
+		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 20000.0);  // set the trigger rate to 50 Hz
+		m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
+	}
+	catch (...)
+	{
+		m_pgentl->memento("Failed to set camera configuration");
+		return ERROR_CAMERASETTING;
+	}
 	// how many grabber ?
-	nfo.lnkCount = (uint32_t)m_grabberlist.size();
+	size_t s = m_grabberlist.size();
+	if (s >= 4)
+		s = 4;
+	else if (s >= 2)
+		s = 2;
+	else
+		s = 1;			// for a single camera only 4,2 or 1 grabber can be used
+	nfo.lnkCount = (uint32_t)s;
 	m_lnkCnt = nfo.lnkCount;
 
+	// try to set the camera according to the grabber that have been found
+	try
+	{
+		switch (s)
+		{
+		case 4:
+			m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_ABCD");
+			break;
+		case 2: 
+			m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_AB");
+			break;
+		case 1:
+		default:
+			m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_A");
+			break;
+		}
+	}
+	catch(...)
+	{
+		m_pgentl->memento("Failed to set Bank camera configuration");
+		return ERROR_CAMERASETTING;
+	}
 	// config the grabbers
 	ret = configGrabbers();
 	if (ret != SUCCESS)
 		return ret;
 
 	// fetch camera info
-	std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
-	nfo.name = CString(name.c_str());
+	//std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
+	//nfo.name = CString(name.c_str());
 	m_sizeX = m_grabberlist[0]->getWidth();
 	m_sizeY = m_grabberlist[0]->getHeight() * nfo.lnkCount;
 	
-	m_buff = (uint8_t*) malloc(m_sizeX * m_sizeY * (m_color ? 3 : 1));
-	if (!m_buff)
-		return ERROR_NOMEMORY;
 	std::string color = m_grabberlist[0]->getString<RemoteModule>(std::string("PixelFormat"));
 	if (color.at(0) == 'M')
 		m_color = false;
 	else
 		m_color = true;
+
+	m_buff = (uint8_t*) malloc(m_sizeX * m_sizeY * (m_color ? 3 : 1));
+	if (!m_buff)
+		return ERROR_NOMEMORY;
 
 	// start acquistion statistic
 	m_grabberlist[0]->execute<StreamModule>(std::string("StatisticsStartSampling"));
@@ -596,7 +717,20 @@ int MultiCXPSource::Start()
 	m_acqthread = new std::thread(acqThread, this);
 
 
-	// start all grabbers
+	// start all grabbers in inverse order
+	try
+	{
+		for (int i = m_lnkCnt - 1; i > -1; i--)
+		{
+			m_grabberlist[i]->start();
+		}
+	}
+	catch (...)
+	{
+		m_pgentl->memento("Failed to start the acquisition");
+		return ERROR_START;
+	}
+
 
 	return SUCCESS;
 }
@@ -636,6 +770,19 @@ int MultiCXPSource::Stop()
 	m_brun = false;
 	m_acqthread->join();
 
+	// stop all grabbers in inverse order
+	try
+	{
+		for (int i = m_lnkCnt - 1; i > -1; i--)
+		{
+			m_grabberlist[i]->stop();
+		}
+	}
+	catch (...)
+	{
+		m_pgentl->memento("Failed to stop the acquisition");
+		return ERROR_STOP;
+	}
 	return SUCCESS;
 }
 

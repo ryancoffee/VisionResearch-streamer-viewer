@@ -7,7 +7,7 @@
 #include <vector>
 #include <algorithm>
 
-#define DEMOMODE 1
+//#define DEMOMODE 1
 
 using namespace Euresys;
 
@@ -91,6 +91,7 @@ private:
 	int configS990(size_t pitch, size_t payload);
 	int configS640(size_t pitch, size_t payload);
 	int configGrabbers();
+	uint8_t findCameraModel(std::string name, CamNfo& nfo);
 	bool checkBank(gc::IF_HANDLE ifh, int bank);
 	int checkHardware(gc::IF_HANDLE ifh); // Check if we have an Octo or a quad G3 and if camera is properly connected
 
@@ -118,8 +119,8 @@ public :
 		, m_bRecDone(false)
 	{
 		// constructor
-		m_cameracountlist.clear();
 		m_grabberlist.clear();
+		m_cameraList.clear();
 #ifdef DEMOMODE
 		m_exp = 10;
 		m_fps = 40;

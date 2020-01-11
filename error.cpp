@@ -29,6 +29,14 @@ CString errorText(int errorCode)
 		break;
 	case ERROR_NOTIMPLEMENTED: code = L"Feature not available";
 		break;
+	case ERROR_UNKNOWNCAMERA: code = L"Camera is not supported";
+		break;
+	case ERROR_CAMERASETTING: code = L"Failed to set camera configuration";
+		break;
+	case ERROR_START: code = L"Camera(s) could not be properly started";
+		break;
+	case ERROR_STOP: code = L"Camera(s) failed to stop";
+		break;
 	default:
 		break;
 
