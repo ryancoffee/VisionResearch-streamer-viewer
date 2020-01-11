@@ -249,7 +249,7 @@ void acqThread(MultiCXPSource* source)
 				source->m_copybuf = false;
 			}
 
-			// return eeach buffer to its own grabber ( push to input queue)
+			// return each buffer to its own grabber ( push to input queue)
 			for (auto nfo : bufnfo)
 			{
 				(nfo.first).push(*(nfo.second));
