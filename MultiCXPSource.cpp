@@ -221,7 +221,7 @@ bool MemoryManager::IsStoring()
 //////////////////////////////////////////////////
 void acqThread(MultiCXPSource* source)
 {
-	size_t s = source->m_sizeX * source->m_sizeY * (source->m_color ? 3 : 1);
+	size_t s = source->m_sizeX * source->m_sizeY *  3 ;
 	std::vector<std::pair<Buffer, codT*>> bufnfo;
 	while (source->m_brun)
 	{
@@ -229,8 +229,9 @@ void acqThread(MultiCXPSource* source)
 		try
 		{
 			// get buffers from output of each grabber (pop out of output queue)
-			for (codT* g : source->m_grabberlist)
+			for (uint32_t i = 0; i < source->m_lnkCnt; i++)
 			{
+				codT* g = source->m_grabberlist[i];
 				Buffer b = (*g).pop((uint64_t)5000000);
 				std::pair<Buffer, codT*> p(b,g);
 				bufnfo.push_back(p);
@@ -244,8 +245,12 @@ void acqThread(MultiCXPSource* source)
 			{
 				// convert the image to the right format
 
+				FormatConverter::BGR8 bgr(*(source->m_pconverter), imagePointer, 
+					(bufnfo[0].first).getInfo<uint64_t>(*(bufnfo[0].second),GenTL::BUFFER_INFO_PIXELFORMAT),
+					source->m_sizeX,
+					source->m_sizeY);
 
-				memcpy(source->m_buff, imagePointer, s);
+				memcpy(source->m_buff, bgr.getBuffer(), s);
 				source->m_copybuf = false;
 			}
 
@@ -270,6 +275,7 @@ int MultiCXPSource::buildGrabbers()
 	try
 	{
 		m_pgentl = new EGenTL();
+		m_pconverter = new FormatConverter(*m_pgentl);
 	}
 	catch (...)
 	{
@@ -338,7 +344,7 @@ int MultiCXPSource::buildGrabbers()
 
 int MultiCXPSource::configS990(size_t pitch, size_t payload)
 {
-	size_t stripeHeight = 4; // for all configuration
+	size_t stripeHeight = 2; // 8 / m_lnkCnt; // for all configuration
 	size_t stripePitch = stripeHeight * m_lnkCnt;
 
 	try
@@ -358,12 +364,12 @@ int MultiCXPSource::configS990(size_t pitch, size_t payload)
 		}
 		for (uint32_t i = 0; i < m_bufferCount; i++)
 		{
-			uint8_t* base = static_cast<uint8_t*>(malloc(payload));
+			m_basebuf[i] = static_cast<uint8_t*>(malloc(payload));
 			for (size_t ix = 0; ix < m_lnkCnt; ++ix)
 			{
 				size_t offset = pitch * stripeHeight * ix;
 				//S990
-				m_grabberlist[ix]->announceAndQueue(UserMemory(base + offset, payload - offset));
+				m_grabberlist[ix]->announceAndQueue(UserMemory(m_basebuf[i] + offset, payload - offset));
 			}
 		}
 	}
@@ -395,11 +401,11 @@ int MultiCXPSource::configS640(size_t pitch, size_t payload)
 		}
 		for (uint32_t i = 0 ; i < m_bufferCount; i++)
 		{
-			uint8_t* base = static_cast<uint8_t*>(malloc(payload));
+			m_basebuf[i] = static_cast<uint8_t*>(malloc(payload));
 			for (size_t ix = 0; ix < m_lnkCnt; ++ix)
 			{
 				//S640
-				m_grabberlist[ix]->announceAndQueue(UserMemory(base, payload));
+				m_grabberlist[ix]->announceAndQueue(UserMemory(m_basebuf[i], payload));
 			}
 		}
 	}
@@ -591,7 +597,7 @@ int MultiCXPSource::Init(CamNfo& nfo)
 		size_t s = m_grabberlist.size();
 		if (s > 1)
 		{
-			for (int i = s - 1; i > -1; i--)
+			for (int i = (int)s - 1; i > -1; i--)
 			{
 				CamNfo nfo;
 				std::string name = m_grabberlist[i]->getString<RemoteModule>("DeviceModelName");
@@ -632,7 +638,7 @@ int MultiCXPSource::Init(CamNfo& nfo)
 		m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
 		m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
 		m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
-		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 20000.0);  // set the trigger rate to 50 Hz
+		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 100000.0);  // set the trigger rate to 50 Hz
 		m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
 	}
 	catch (...)
@@ -683,14 +689,9 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	//nfo.name = CString(name.c_str());
 	m_sizeX = m_grabberlist[0]->getWidth();
 	m_sizeY = m_grabberlist[0]->getHeight() * nfo.lnkCount;
-	
-	std::string color = m_grabberlist[0]->getString<RemoteModule>(std::string("PixelFormat"));
-	if (color.at(0) == 'M')
-		m_color = false;
-	else
-		m_color = true;
 
-	m_buff = (uint8_t*) malloc(m_sizeX * m_sizeY * (m_color ? 3 : 1));
+
+	m_buff = (uint8_t*) malloc(m_sizeX * m_sizeY *  3 );
 	if (!m_buff)
 		return ERROR_NOMEMORY;
 
@@ -745,7 +746,8 @@ int MultiCXPSource::Record()
 		{
 			// todo make sure we can allocate the memory with no error
 			m_mm = new MemoryManager();
-			m_buffcount = m_mm->Init(0.75, m_sizeX * m_sizeY * (m_color ? 3 : 1));
+			unsigned int bpp = m_pgentl->imageGetBytesPerPixel(m_grabberlist[0]->getPixelFormat());
+			m_buffcount = m_mm->Init(0.75, m_sizeX * m_sizeY * bpp);
 			
 		}
 		m_mm->StartStoring();
@@ -847,7 +849,7 @@ int MultiCXPSource::GetImageInfo(ImgNfo& nfo)
 {
 	if (!m_init)
 		return ERROR_NOINIT;
-	nfo.color = m_color;
+	nfo.color = true;
 	nfo.sizeX = m_sizeX;
 	nfo.sizeY = m_sizeY;
 

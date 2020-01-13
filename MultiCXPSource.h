@@ -1,14 +1,16 @@
 #pragma once
 
 #include "c:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
+#include "c:\Program Files\Euresys\Coaxlink\include\FormatConverter.h"
 #include "error.h"
 #include <thread>
 #include <string>
 #include <vector>
+#include <array>
 #include <algorithm>
 
 //#define DEMOMODE 1
-
+#define CXPBUFCOUNT		20
 using namespace Euresys;
 
 typedef std::pair<uint64_t, void*> dpair;
@@ -70,11 +72,11 @@ public:
 	uint8_t* m_buff;													// buffer that contain a image copy
 	size_t m_sizeX;
 	size_t m_sizeY;
-	bool m_color;
 	uint32_t m_lnkCnt;
 	MemoryManager* m_mm;
 	bool m_bRec;
 	size_t m_buffcount;
+	FormatConverter* m_pconverter;
 
 private:
 
@@ -86,6 +88,7 @@ private:
 	uint8_t m_cameratype; 
 	uint32_t m_bufferCount;
 	bool m_bRecDone;
+	std::array<uint8_t*, CXPBUFCOUNT> m_basebuf;
 
 	int buildGrabbers();
 	int configS990(size_t pitch, size_t payload);
@@ -102,9 +105,9 @@ private:
 public :	
 	MultiCXPSource() :
 		m_pgentl(nullptr)
+		, m_pconverter(nullptr)
 		, m_sizeX(0)
 		, m_sizeY(0)
-		, m_color(false)
 		, m_init(false)
 		, m_lnkCnt(1)
 		, m_buff(nullptr)
@@ -112,7 +115,7 @@ public :
 		, m_acqthread(nullptr)
 		, m_brun(false)
 		, m_cameratype(0)
-		, m_bufferCount(20)
+		, m_bufferCount(CXPBUFCOUNT)
 		, m_bRec(false)
 		, m_mm(nullptr)
 		, m_buffcount(0)
@@ -121,6 +124,9 @@ public :
 		// constructor
 		m_grabberlist.clear();
 		m_cameraList.clear();
+		m_basebuf.fill(nullptr);
+
+
 #ifdef DEMOMODE
 		m_exp = 10;
 		m_fps = 40;
@@ -130,7 +136,7 @@ public :
 	~MultiCXPSource()
 	{
 		// destructor
-
+		m_brun = false;
 		// device list
 		for (EGrabber<CallbackOnDemand>* &grab : m_grabberlist)
 		{
@@ -140,17 +146,36 @@ public :
 
 		}
 		m_grabberlist.clear();
-
+		
+		// converter
+		if (m_pconverter)
+		{
+			delete m_pconverter;
+			m_pconverter = nullptr;
+		}
 		// gentl
 		if (m_pgentl)
 		{
 			delete m_pgentl;
 			m_pgentl = nullptr;
 		}
+		for (uint8_t* b : m_basebuf)
+		{
+			if (b != nullptr)
+				free(b);
+		}
+		m_basebuf.fill(nullptr);
+
 		if (m_buff)
 		{
 			free(m_buff);
 			m_buff = nullptr;
+		}
+		if (nullptr != m_acqthread)
+		{
+			m_acqthread->join();
+			delete m_acqthread;
+			m_acqthread = nullptr;
 		}
 	}
 
