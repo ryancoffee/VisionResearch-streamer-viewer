@@ -183,6 +183,7 @@ public :
 	int Init(CamNfo& nfo);
 	int Start();
 	int Record();
+	bool StopRecord();
 	bool IsRecording();
 	int Stop();
 	int GetImage(UINT8 ** data);

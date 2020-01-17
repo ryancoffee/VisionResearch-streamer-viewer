@@ -239,7 +239,7 @@ void acqThread(MultiCXPSource* source)
 
 			// get buffer this first grabber hold alway ( for the S990 and S640) the pointer to the first pixel
 			uint8_t* imagePointer = ((bufnfo[0]).first).getInfo<uint8_t*>(*(bufnfo[0].second),GenTL::BUFFER_INFO_BASE);
-
+			uint64_t buftime = ((bufnfo[0]).first).getInfo<uint64_t>(*(bufnfo[0].second),GenTL::BUFFER_INFO_TIMESTAMP);
 			// preview image needed
 			if (source->m_copybuf)
 			{
@@ -252,6 +252,15 @@ void acqThread(MultiCXPSource* source)
 
 				memcpy(source->m_buff, bgr.getBuffer(), s);
 				source->m_copybuf = false;
+			}
+			if (source->m_bRec)
+			{
+				if (!source->m_mm->SetBuffer((void*)imagePointer, buftime))
+				{
+					// we could not store the buffer ... stop
+					source->m_mm->StopStoring();
+					source->m_bRec = false;
+				}
 			}
 
 			// return each buffer to its own grabber ( push to input queue)
@@ -754,6 +763,17 @@ int MultiCXPSource::Record()
 		m_bRec = true;
 	}
 	return 0;
+}
+bool MultiCXPSource::StopRecord()
+{
+	if (!m_bRec)
+		return false; // nothing to do
+	if (nullptr != m_mm)
+	{
+		m_mm->StopStoring();
+		m_bRec = false;
+	}
+	return true;
 }
 
 bool MultiCXPSource::IsRecording()
