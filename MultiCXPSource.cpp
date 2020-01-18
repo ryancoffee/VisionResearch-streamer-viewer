@@ -158,6 +158,22 @@ bool MemoryManager::GetNextBuffer(void** buffer, uint64_t& time)
 	return true;
 }
 
+bool MemoryManager::GetNextBufferEx(void** buffer, int skip, uint64_t& time)
+{
+	if (m_isStoring)
+		return false;	// still storing
+	if (m_data.size() == 0)
+		return false;	// no data
+	if ((size_t)m_currentBuffer + skip >= m_data.size())
+		return false;	// no more buffers
+	if ((size_t)m_currentBuffer + skip < 0)
+		return false;
+	*buffer = (m_data[(size_t)m_currentBuffer+skip]).second;
+	time = (m_data[(size_t)m_currentBuffer+skip]).first;
+	m_currentBuffer+=skip;
+	return true;
+}
+
 
 bool MemoryManager::StartStoring()
 {
@@ -212,9 +228,11 @@ bool MemoryManager::GetRange(uint64_t& ms, uint64_t& begin, uint64_t& end)
 	return true;
 }
 
-bool MemoryManager::IsStoring()
+size_t MemoryManager::IsStoring()
 {
-	return m_isStoring;
+	if (!m_isStoring)
+		return 0;
+	return m_data.size();
 }
 
 //////////////////////////////////////////////////
@@ -647,7 +665,7 @@ int MultiCXPSource::Init(CamNfo& nfo)
 		m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
 		m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
 		m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
-		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 100000.0);  // set the trigger rate to 50 Hz
+		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 10000.0);  // set the trigger rate to 50 Hz
 		m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
 	}
 	catch (...)
@@ -761,8 +779,11 @@ int MultiCXPSource::Record()
 		}
 		m_mm->StartStoring();
 		m_bRec = true;
+		
+		// todo start time stamping 
+
 	}
-	return 0;
+	return (int)m_buffcount;
 }
 bool MultiCXPSource::StopRecord()
 {
@@ -779,6 +800,16 @@ bool MultiCXPSource::StopRecord()
 bool MultiCXPSource::IsRecording()
 {
 	return m_bRec;
+}
+
+size_t MultiCXPSource::GetRecCount()
+{
+	if (!m_bRec)
+		return 0;
+	if (nullptr != m_mm)
+		return m_mm->IsStoring();
+	else
+		return 0;
 }
 
 int MultiCXPSource::Stop()
@@ -1010,6 +1041,16 @@ int MultiCXPSource::GetRecordedImageNext(UINT8** data, uint64_t& at)
 	if (!m_bRecDone)
 		return ERROR_PARAMOUTOFRANGE;
 	if (!m_mm->GetNextBuffer((void**)data, at))
+		return ERROR_PARAMACCESS;
+	return SUCCESS;
+	return 0;
+}
+
+int MultiCXPSource::GetRecordedImageNextEx(UINT8** data, int skip, uint64_t& at)
+{
+	if (!m_bRecDone)
+		return ERROR_PARAMOUTOFRANGE;
+	if (!m_mm->GetNextBufferEx((void**)data, skip, at))
 		return ERROR_PARAMACCESS;
 	return SUCCESS;
 	return 0;

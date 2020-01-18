@@ -137,6 +137,8 @@ CStreamerViewerDlg::CStreamerViewerDlg(CWnd* pParent /*=nullptr*/)
 	, m_viewFullSize(true)
 	, m_viewZoom(0)		
 	, m_viewRatio(false)
+	, m_maxBuf(0)
+	, m_isRec(false)
 
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -162,6 +164,30 @@ CStreamerViewerDlg::~CStreamerViewerDlg()
 		free(m_bitmapInfoBW);
 		m_bitmapInfoBW = nullptr;
 	}
+}
+
+void CStreamerViewerDlg::setMemUsage()
+{
+	if (!m_isRec)	// if dlg didn't send rec command do nothing
+		return;
+
+	
+	if (source.IsRecording())		// we are still recording 
+	{
+		size_t val = source.GetRecCount();
+		val = (m_maxBuf > val) ? m_maxBuf - val : 0;
+		m_Prog_Mem.SetPos((int)val);
+	}
+	else
+	{
+		// finish recording ...
+		m_Prog_Mem.SetPos((int)m_maxBuf);
+		// stop the current preview
+		OnGrabberStop();
+		// spawn new window to see the recorded data
+		m_RecDlg.ShowWindow(SW_SHOW);
+	}
+
 }
 
 // get an image from the source and display if available
@@ -211,6 +237,7 @@ void CStreamerViewerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDT_FPS, m_dFps);
 	DDX_Text(pDX, IDC_EDT_MPS, m_dMbps);
 	DDX_Text(pDX, IDC_EDT_LOSTFRAME, m_iLostFrame);
+	DDX_Control(pDX, IDC_PR_RECORD, m_Prog_Mem);
 }
 
 BEGIN_MESSAGE_MAP(CStreamerViewerDlg, CDialogEx)
@@ -233,6 +260,7 @@ BEGIN_MESSAGE_MAP(CStreamerViewerDlg, CDialogEx)
 	ON_COMMAND(ID_ZOOMOUT_2, &CStreamerViewerDlg::OnZoomout2)
 	ON_COMMAND(ID_ZOOMOUT_3, &CStreamerViewerDlg::OnZoomout3)
 	ON_COMMAND(ID_ZOOMOUT_4, &CStreamerViewerDlg::OnZoomout4)
+	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 
@@ -315,6 +343,9 @@ BOOL CStreamerViewerDlg::OnInitDialog()
 			m_bitmapInfoBW->bmiColors[i].rgbReserved = 0;
 		}
 	}
+	m_RecDlg.Create(IDD_DLG_RECORDED, this);
+	m_RecDlg.ShowWindow(SW_HIDE);
+	m_RecDlg.m_psource = &source;
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -476,6 +507,7 @@ void CStreamerViewerDlg::OnCameraDetect()
 void CStreamerViewerDlg::OnGrabberStart()
 {
 	// Start image acquisition
+	source.SetFps(1000.0);
 	source.Start();
 	
 	// Start the timer to pull images
@@ -488,15 +520,19 @@ void CStreamerViewerDlg::OnGrabberStart()
 	pMenu->EnableMenuItem(ID_GRABBER_RECORD, MF_ENABLED);
 	//MenuView(true);
 
+	m_RecDlg.ShowWindow(SW_HIDE);
 }
 
 
 void CStreamerViewerDlg::OnGrabberRecord()
 {
-	source.Record();
+	m_maxBuf = source.Record();
 	CMenu* pMenu = GetMenu();
 	pMenu->EnableMenuItem(ID_GRABBER_RECORD, MF_GRAYED);
-
+	// set the memory usage slider
+	m_Prog_Mem.SetRange32(0, m_maxBuf);
+	m_Prog_Mem.SetPos(m_maxBuf);
+	m_isRec = true;
 }
 
 
@@ -509,7 +545,7 @@ void CStreamerViewerDlg::OnGrabberStop()
 	source.Stop();
 	
 	CMenu* pMenu = GetMenu();
-	pMenu->EnableMenuItem(ID_GRABBER_RECORD, MF_ENABLED);
+	pMenu->EnableMenuItem(ID_GRABBER_RECORD, MF_GRAYED);
 	pMenu->EnableMenuItem(ID_GRABBER_START, MF_ENABLED);
 	pMenu->EnableMenuItem(ID_GRABBER_STOP, MF_GRAYED);
 }
@@ -522,6 +558,7 @@ void CStreamerViewerDlg::OnTimer(UINT_PTR nIDEvent)
 	{
 	case 1: // grab image
 		getImgnDisplay();
+		setMemUsage();
 		break;
 	default:
 		break;
@@ -624,4 +661,15 @@ void CStreamerViewerDlg::OnZoomout3()
 void CStreamerViewerDlg::OnZoomout4()
 {
 	Zoom(-16);
+}
+
+
+
+
+
+void CStreamerViewerDlg::OnDestroy()
+{
+	CDialogEx::OnDestroy();
+
+	m_RecDlg.DestroyWindow();
 }

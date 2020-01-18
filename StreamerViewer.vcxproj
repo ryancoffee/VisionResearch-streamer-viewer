@@ -187,11 +187,11 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CImg.h" />
     <ClInclude Include="error.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MultiCXPSource.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="RecordedDataDlg.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="StreamerViewer.h" />
     <ClInclude Include="StreamerViewerDlg.h" />
@@ -206,6 +206,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="RecordedDataDlg.cpp" />
     <ClCompile Include="StreamerViewer.cpp" />
     <ClCompile Include="StreamerViewerDlg.cpp" />
   </ItemGroup>

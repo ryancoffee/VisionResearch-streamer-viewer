@@ -4,8 +4,7 @@
 
 #pragma once
 #include "MultiCXPSource.h"
-#include "CImg.h"
-
+#include "RecordedDataDlg.h"
 
 
 // CStreamerViewerDlg dialog
@@ -20,18 +19,22 @@ class CStreamerViewerDlg : public CDialogEx
 	bool	m_viewFullSize;	// need to stretch ?
 	int		m_viewZoom;		// 0 not zoom , 2,4,8,16 ( zoom in) , -2,-4,-8,-16 zoom out, 1 = fit to screen
 	bool	m_viewRatio;	// keep aspect ratio
-
+	int		m_maxBuf;		// number of buffer that count be allocated
+	bool	m_isRec;		// did the dlg set rec command	
 
 // Construction
 public:
 	CStreamerViewerDlg(CWnd* pParent = nullptr);	// standard constructor
 	~CStreamerViewerDlg();
 
+
+
 // Dialog Data
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_STREAMERVIEWER_DIALOG };
 #endif
-private: 
+private: 	
+	void setMemUsage();
 	void getImgnDisplay();
 	void check(int code, CString fct);
 
@@ -43,6 +46,7 @@ protected:
 	ImgNfo			m_nfo;					// info on the incoming image		
 	uint8_t*		m_pdata;				// pointer to the incoming image
 	bool			m_reDraw;				// true if the Onpaint can be called again
+	RecordedDataDlg m_RecDlg;				// show recorded images
 
 // Implementation
 protected:
@@ -64,6 +68,7 @@ public:
 	double m_dFps;
 	double m_dMbps;
 	uint32_t m_iLostFrame;
+	CProgressCtrl m_Prog_Mem;		// Memory usage progress bar
 	afx_msg void OnViewFullsize();
 	afx_msg void OnViewFittoscreen();
 	afx_msg void OnViewKeepaspectratio();
@@ -75,4 +80,6 @@ public:
 	afx_msg void OnZoomout2();
 	afx_msg void OnZoomout3();
 	afx_msg void OnZoomout4();
+
+	afx_msg void OnDestroy();
 };

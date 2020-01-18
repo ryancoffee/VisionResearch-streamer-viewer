@@ -35,10 +35,11 @@ public:
 	bool SeekBuffer(void** buffer, int64_t frombegin_us, uint64_t& time);
 
 	bool GetNextBuffer(void** buffer, uint64_t& time);
+	bool GetNextBufferEx(void** buffer, int skip, uint64_t& time);
 	bool StartStoring();
 	bool StopStoring();
 	bool GetRange(uint64_t& ms, uint64_t& begin, uint64_t& end);
-	bool IsStoring();
+	size_t IsStoring();		// 0 if not storing else number of buffer already stored
 };
 
 struct ImgNfo
@@ -185,6 +186,7 @@ public :
 	int Record();
 	bool StopRecord();
 	bool IsRecording();
+	size_t GetRecCount();
 	int Stop();
 	int GetImage(UINT8 ** data);
 	int GetImageInfo(ImgNfo& nfo);
@@ -196,6 +198,7 @@ public :
 	int GetRecordedRange(uint64_t& buffercount, uint64_t& start, uint64_t& end);
 	int GetRecordImageAt(UINT8** data, uint64_t& at);
 	int GetRecordedImageNext(UINT8** data, uint64_t& at);
+	int GetRecordedImageNextEx(UINT8** data, int skip, uint64_t& at);
 
 
 };

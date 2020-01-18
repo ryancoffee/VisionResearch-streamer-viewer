@@ -106,9 +106,25 @@ BEGIN
     LTEXT           "fps",IDC_STATIC,39,199,10,8
     LTEXT           "MB/s",IDC_STATIC,93,199,16,8
     LTEXT           "Lost frames",IDC_STATIC,160,199,37,8
-    PUSHBUTTON      "Start Recording",IDC_BT_RECORD,316,6,64,15
-    CONTROL         "",IDC_PR_RECORD,"msctls_progress32",WS_BORDER,319,44,60,7
-    LTEXT           "memory usage :",IDC_STATIC,321,26,56,9
+    CONTROL         "",IDC_PR_RECORD,"msctls_progress32",WS_BORDER,319,20,60,7
+    LTEXT           "memory usage :",IDC_STATIC,321,7,56,9
+END
+
+IDD_DLG_RECORDED DIALOGEX 0, 0, 361, 205
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "In Memory Recorded data"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Exit",IDCANCEL,303,185,50,15
+    CONTROL         "",IDC_STATIC,"Static",SS_BLACKFRAME,7,4,346,178
+    PUSHBUTTON      "|>",IDC_BT_RECPLAY,43,185,16,14
+    PUSHBUTTON      "||",IDC_BT_RECPAUSE,109,185,16,15
+    PUSHBUTTON      "[ ]",IDC_BT_RECSTOP,127,185,16,14
+    PUSHBUTTON      ">|",IDC_BT_RECSTEPF,62,185,16,14
+    PUSHBUTTON      "|<",IDC_BT_RECSTEPB,24,185,16,14
+    PUSHBUTTON      ">>",IDC_BT_RECFFOR,81,185,16,14
+    PUSHBUTTON      "<<",IDC_BT_RECFBACK,5,185,16,14
+    CONTROL         "",IDC_PRG_PLAY,"msctls_progress32",WS_BORDER,145,189,153,7
 END
 
 
@@ -170,6 +186,14 @@ BEGIN
     IDD_STREAMERVIEWER_DIALOG, DIALOG
     BEGIN
     END
+
+    IDD_DLG_RECORDED, DIALOG
+    BEGIN
+        LEFTMARGIN, 1
+        RIGHTMARGIN, 360
+        TOPMARGIN, 1
+        BOTTOMMARGIN, 204
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -191,8 +215,22 @@ BEGIN
     0, 100, 0, 0,
     0, 100, 0, 0,
     100, 0, 0, 0,
-    100, 0, 0, 0,
     100, 0, 0, 0
+END
+
+IDD_DLG_RECORDED AFX_DIALOG_LAYOUT
+BEGIN
+    0,
+    100, 100, 0, 0,
+    0, 0, 100, 100,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 0, 0,
+    0, 100, 100, 0
 END
 
 
