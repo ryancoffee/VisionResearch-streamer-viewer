@@ -583,6 +583,16 @@ int MultiCXPSource::checkHardware(gc::IF_HANDLE ifh)
 	return count;
 }
 
+void MultiCXPSource::convertImage(uint8_t* buf)
+{
+	FormatConverter::BGR8 bgr(*(m_pconverter), buf,
+		m_grabberlist[0]->getPixelFormat(),
+		m_sizeX,
+		m_sizeY);
+	size_t s = m_sizeX * m_sizeY * 3;
+	memcpy(m_reco, bgr.getBuffer(), s);
+}
+
 int MultiCXPSource::Init(CamNfo& nfo)
 {
 #ifdef DEMOMODE
@@ -720,6 +730,9 @@ int MultiCXPSource::Init(CamNfo& nfo)
 
 	m_buff = (uint8_t*) malloc(m_sizeX * m_sizeY *  3 );
 	if (!m_buff)
+		return ERROR_NOMEMORY;
+	m_reco = (uint8_t*)malloc(m_sizeX * m_sizeY * 3);
+	if (!m_reco)
 		return ERROR_NOMEMORY;
 
 	// start acquistion statistic
@@ -900,7 +913,6 @@ int MultiCXPSource::GetImageInfo(ImgNfo& nfo)
 {
 	if (!m_init)
 		return ERROR_NOINIT;
-	nfo.color = true;
 	nfo.sizeX = m_sizeX;
 	nfo.sizeY = m_sizeY;
 
@@ -1031,8 +1043,11 @@ int MultiCXPSource::GetRecordImageAt(UINT8** data, uint64_t& at)
 {
 	if(!m_bRecDone)
 		return ERROR_PARAMOUTOFRANGE;
-	if (!m_mm->SeekBuffer((void**)data, at, at))
+	UINT8* buff;
+	if (!m_mm->SeekBuffer((void**)&buff, at, at))
 		return ERROR_PARAMACCESS;
+	convertImage(buff);
+	*data = m_reco;
 	return SUCCESS;
 }
 
@@ -1040,18 +1055,24 @@ int MultiCXPSource::GetRecordedImageNext(UINT8** data, uint64_t& at)
 {
 	if (!m_bRecDone)
 		return ERROR_PARAMOUTOFRANGE;
-	if (!m_mm->GetNextBuffer((void**)data, at))
+	UINT8* buff;
+	if (!m_mm->GetNextBuffer((void**)&buff, at))
 		return ERROR_PARAMACCESS;
+	convertImage(buff);
+	*data = m_reco;
 	return SUCCESS;
-	return 0;
+
 }
 
 int MultiCXPSource::GetRecordedImageNextEx(UINT8** data, int skip, uint64_t& at)
 {
 	if (!m_bRecDone)
 		return ERROR_PARAMOUTOFRANGE;
-	if (!m_mm->GetNextBufferEx((void**)data, skip, at))
+	UINT8* buff;
+	if (!m_mm->GetNextBufferEx((void**)&buff, skip, at))
 		return ERROR_PARAMACCESS;
+	convertImage(buff);
+	*data = m_reco;
 	return SUCCESS;
 	return 0;
 }

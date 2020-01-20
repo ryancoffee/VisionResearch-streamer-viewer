@@ -21,8 +21,10 @@ RecordedDataDlg::RecordedDataDlg(CWnd* pParent /*=nullptr*/)
 	, m_stop(0)
 	, m_pos(0)
 	, m_pbuf(nullptr)
+	, m_reDraw(true)
 {
-
+	m_nfo.sizeX = 0;
+	m_nfo.sizeY = 0;
 }
 
 RecordedDataDlg::~RecordedDataDlg()
@@ -32,7 +34,7 @@ RecordedDataDlg::~RecordedDataDlg()
 void RecordedDataDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_PRG_PLAY, m_PrgPlay);
+	DDX_Control(pDX, IDC_SLD_POS, m_sldPosition);
 }
 
 
@@ -46,6 +48,9 @@ BEGIN_MESSAGE_MAP(RecordedDataDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BT_RECPAUSE, &RecordedDataDlg::OnBnClickedBtRecpause)
 	ON_BN_CLICKED(IDC_BT_RECSTOP, &RecordedDataDlg::OnBnClickedBtRecstop)
 	ON_BN_CLICKED(IDC_BT_RECSTEPF, &RecordedDataDlg::OnBnClickedBtRecstepf)
+	ON_NOTIFY(NM_RELEASEDCAPTURE, IDC_SLD_POS, &RecordedDataDlg::OnNMReleasedcaptureSldPos)
+	ON_BN_CLICKED(IDC_BT_RECSTEPB, &RecordedDataDlg::OnBnClickedBtRecstepb)
+	ON_WM_PAINT()
 END_MESSAGE_MAP()
 
 
@@ -88,9 +93,10 @@ BOOL RecordedDataDlg::OnInitDialog()
 		return TRUE;
 	m_psource->GetRecordedRange(m_count, m_start, m_stop);
 	m_pos = m_start;
+	m_psource->GetImageInfo(m_nfo);
 	m_psource->GetRecordImageAt(&m_pbuf, m_pos);
-	m_PrgPlay.SetRange32(0, m_stop - m_start);
-	m_PrgPlay.SetPos(0);
+	m_sldPosition.SetRange(0, (int)((m_stop - m_start) / 1000)); // in miliseconds
+	m_sldPosition.SetPos(0);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // EXCEPTION: OCX Property Pages should return FALSE
@@ -109,15 +115,35 @@ void RecordedDataDlg::OnBnClickedBtRecffor()
 {
 	if (!(m_playType & 0x01))
 		SetTimer(1, 40, NULL);			// system is stopped
+	
+	if (m_playType & 0b01000)
+		m_playType = 1;				// if backward => fowards
+	else
+	{
+		int speed = (m_playType >> 1) & 0x03;  // else go faster
+		speed++;
+		if (speed > 3)
+			speed = 3;
 
-	m_playType = 0b0111;
+		m_playType = (speed << 1) + 1;
+	}
 }
 void RecordedDataDlg::OnBnClickedBtRecfback()
 {
 	if (!(m_playType & 0x01))
 		SetTimer(1, 40, NULL);			// system is stopped
 
-	m_playType = 0b01111;
+	if (!(m_playType & 0b01000))		// if we are not backwards => go backwards
+		m_playType = 0b01001;
+	else
+	{
+		int speed = (m_playType >> 1) & 0x03;  // else go faster
+		speed++;
+		if (speed > 3)
+			speed = 3;
+		m_playType = (speed << 1) + 0b01001;	// play backwards
+	}
+
 }
 
 void RecordedDataDlg::OnBnClickedBtRecpause()
@@ -132,9 +158,9 @@ void RecordedDataDlg::OnBnClickedBtRecstop()
 		KillTimer(1);
 	m_pos = m_start;
 	m_psource->GetRecordImageAt(&m_pbuf, m_pos);
-	m_PrgPlay.SetPos(0);
+	m_sldPosition.SetPos(0);
 	m_playType = 0;
-	// todo draw image
+	ReDraw();
 }
 void RecordedDataDlg::OnBnClickedBtRecstepf()
 {
@@ -143,12 +169,22 @@ void RecordedDataDlg::OnBnClickedBtRecstepf()
 	m_playType = 0;
 	if (m_psource->GetRecordedImageNext(&m_pbuf, m_pos))
 	{
-		m_PrgPlay.SetPos(m_pos - m_start);
-		// todo draw image
+		m_sldPosition.SetPos((int)((m_pos - m_start)/1000));
+		ReDraw();
 	}
 
 }
-
+void RecordedDataDlg::OnBnClickedBtRecstepb()
+{
+	if (!(m_playType & 0x01))
+		KillTimer(1);
+	m_playType = 0;
+	if (m_psource->GetRecordedImageNext(&m_pbuf, m_pos))
+	{
+		m_sldPosition.SetPos((int)((m_pos - m_start) / 1000));
+		ReDraw();
+	}
+}
 
 void RecordedDataDlg::OnTimer(UINT_PTR nIDEvent)
 {
@@ -172,7 +208,7 @@ void RecordedDataDlg::Play()
 	{
 	case 0: step = 10;
 		break;
-	case 1: step = 100;
+	case 1: step = 80;
 		break;
 	case 2: step = 400;
 		break;
@@ -184,8 +220,8 @@ void RecordedDataDlg::Play()
 
 	if (m_psource->GetRecordedImageNextEx(&m_pbuf, speed, m_pos))
 	{
-		m_PrgPlay.SetPos(m_pos - m_start);
-		// todo draw image
+		m_sldPosition.SetPos((int)((m_pos - m_start)/1000));
+		ReDraw();
 	}
 	else
 	{
@@ -195,12 +231,111 @@ void RecordedDataDlg::Play()
 	}
 }
 
+void RecordedDataDlg::ReDraw()
+{
+	if (m_reDraw)
+	{
+		m_reDraw = false;
+		CWnd* pic = GetDlgItem(IDC_STRECORD);
+		CRect rect;
+		pic->GetClientRect(&rect);
+		InvalidateRect(&rect, false);
+	}
+}
+
+
+
+void RecordedDataDlg::OnNMReleasedcaptureSldPos(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// find current slider position and compute relative time
+	m_pos = m_start + ((size_t)m_sldPosition.GetPos()*1000);
+	// get related image
+	if (m_psource->GetRecordedImageNext(&m_pbuf, m_pos))
+	{
+		m_sldPosition.SetPos((int)((m_pos - m_start) / 1000));
+		ReDraw();
+	}
+
+	*pResult = 0;
+}
 
 
 
 
 
+void RecordedDataDlg::OnPaint()
+{
+	CPaintDC dc(this); // device context for painting
+	if (m_pbuf != nullptr && m_nfo.sizeX > 0)
+	{
 
+		CWnd* pic = GetDlgItem(IDC_STRECORD);
+		CDC* pdc = pic->GetWindowDC();
 
+		// color image ?
+		BITMAPINFO* bmpNfo;
+		bmpNfo = m_bitmapInfoCOL;
 
+		bmpNfo->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
+		bmpNfo->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expect from bottom to up
 
+														  // DRAW
+		//if (m_viewFullSize)
+		{
+			// draw the image
+			SetDIBitsToDevice(pdc->GetSafeHdc(), 0, 0, (DWORD)m_nfo.sizeX, (DWORD)m_nfo.sizeY,
+				0, 0, 0, (UINT)m_nfo.sizeY,
+				(void*)m_pbuf, bmpNfo, DIB_RGB_COLORS);
+		}
+		/*else
+		{
+			size_t oriw = m_nfo.sizeX;
+			size_t orih = m_nfo.sizeY;
+
+			CRect rec;
+			pic->GetClientRect(rec);
+			size_t desw = rec.Width();
+			size_t desh = rec.Height();
+			if (m_viewRatio)
+			{
+				// recompute ration
+				float rx = (float)oriw / (float)desw;
+				float ry = (float)orih / (float)desh;
+				if (rx > ry)
+				{
+					desh = (size_t)((float)orih / rx);
+				}
+				else
+				{
+					desw = (size_t)((float)oriw / ry);
+				}
+			}
+
+			// build in zoom factor
+			if (m_viewZoom > 1)
+			{
+				desw = oriw * m_viewZoom;
+				desh = orih * m_viewZoom;
+			}
+			if (m_viewZoom < -1)
+			{
+				desw = oriw / (-1 * m_viewZoom);
+				desh = orih / (-1 * m_viewZoom);
+
+			}
+
+			// strech image
+			SetStretchBltMode(pdc->GetSafeHdc(), HALFTONE);		// best result but slow
+			POINT pt;
+			SetBrushOrgEx(pdc->GetSafeHdc(), 0, 0, &pt);		// realign brush for proper streching
+			StretchDIBits(pdc->GetSafeHdc(), 1, 1, (int)desw - 1, (int)desh - 1, 0, 0, (int)oriw, (int)orih,
+				(void*)m_pdata, bmpNfo, DIB_RGB_COLORS, SRCCOPY); // strech image
+				//m_imagePointer[i], m_bitmapInfoCOL, DIB_RGB_COLORS, SRCCOPY); // strech image
+
+		}*/
+		pic->ReleaseDC(pdc);
+	}
+
+	// accept a new Paint message
+	m_reDraw = true;
+}

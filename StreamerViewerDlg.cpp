@@ -143,11 +143,9 @@ CStreamerViewerDlg::CStreamerViewerDlg(CWnd* pParent /*=nullptr*/)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	m_bitmapInfoCOL = nullptr;
-	m_bitmapInfoBW = nullptr;
 	m_pdata = nullptr;
 	m_nfo.sizeX = 0;
 	m_nfo.sizeY = 0;
-	m_nfo.color = false;
 	m_reDraw = true;
 }
 
@@ -159,11 +157,6 @@ CStreamerViewerDlg::~CStreamerViewerDlg()
 		m_bitmapInfoCOL = nullptr;
 	}
 
-	if (m_bitmapInfoBW != nullptr)
-	{
-		free(m_bitmapInfoBW);
-		m_bitmapInfoBW = nullptr;
-	}
 }
 
 void CStreamerViewerDlg::setMemUsage()
@@ -322,27 +315,6 @@ BOOL CStreamerViewerDlg::OnInitDialog()
 		m_bitmapInfoCOL->bmiHeader.biClrImportant = 0;
 
 	}
-	// bw image info header
-	m_bitmapInfoBW = (BITMAPINFO*) malloc(sizeof(BITMAPINFO) + 255 * sizeof(RGBQUAD));
-	if (m_bitmapInfoBW)
-	{
-		m_bitmapInfoBW->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-		m_bitmapInfoBW->bmiHeader.biPlanes = 1;
-		m_bitmapInfoBW->bmiHeader.biBitCount = 8;
-		m_bitmapInfoBW->bmiHeader.biCompression = BI_RGB;
-		m_bitmapInfoBW->bmiHeader.biSizeImage = 0;
-		m_bitmapInfoBW->bmiHeader.biXPelsPerMeter = 0;
-		m_bitmapInfoBW->bmiHeader.biYPelsPerMeter = 0;
-		m_bitmapInfoBW->bmiHeader.biClrUsed = 0;
-		m_bitmapInfoBW->bmiHeader.biClrImportant = 0;
-		for (int i = 0; i < 256; i++)
-		{
-			m_bitmapInfoBW->bmiColors[i].rgbBlue = (BYTE)i;
-			m_bitmapInfoBW->bmiColors[i].rgbGreen = (BYTE)i;
-			m_bitmapInfoBW->bmiColors[i].rgbRed = (BYTE)i;
-			m_bitmapInfoBW->bmiColors[i].rgbReserved = 0;
-		}
-	}
 	m_RecDlg.Create(IDD_DLG_RECORDED, this);
 	m_RecDlg.ShowWindow(SW_HIDE);
 	m_RecDlg.m_psource = &source;
@@ -399,10 +371,7 @@ void CStreamerViewerDlg::OnPaint()
 
 			// color image ?
 			BITMAPINFO* bmpNfo;
-			if (m_nfo.color)
-				bmpNfo = m_bitmapInfoCOL;
-			else
-				bmpNfo = m_bitmapInfoBW;
+			bmpNfo = m_bitmapInfoCOL;
 
 			bmpNfo->bmiHeader.biWidth = (LONG)m_nfo.sizeX;
 			bmpNfo->bmiHeader.biHeight = -((int)m_nfo.sizeY); // negative because buffer is from top to down and windows expect from bottom to up

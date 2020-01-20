@@ -46,7 +46,6 @@ struct ImgNfo
 {
 	size_t	sizeX=0;
 	size_t	sizeY=0;
-	bool	color=false;
 };
 
 struct CamNfo
@@ -71,6 +70,7 @@ public:
 	std::vector<codT*> m_grabberlist;				// grabber list
 	volatile bool m_copybuf;											// copy the buffer
 	uint8_t* m_buff;													// buffer that contain a image copy
+	uint8_t* m_reco;														// buffer that contain one of the recorded image
 	size_t m_sizeX;
 	size_t m_sizeY;
 	uint32_t m_lnkCnt;
@@ -98,6 +98,7 @@ private:
 	uint8_t findCameraModel(std::string name, CamNfo& nfo);
 	bool checkBank(gc::IF_HANDLE ifh, int bank);
 	int checkHardware(gc::IF_HANDLE ifh); // Check if we have an Octo or a quad G3 and if camera is properly connected
+	void convertImage(uint8_t* buf);
 
 #ifdef DEMOMODE
 	double  m_exp;
@@ -112,6 +113,7 @@ public :
 		, m_init(false)
 		, m_lnkCnt(1)
 		, m_buff(nullptr)
+		, m_reco(nullptr)
 		, m_copybuf(false)
 		, m_acqthread(nullptr)
 		, m_brun(false)
@@ -171,6 +173,11 @@ public :
 		{
 			free(m_buff);
 			m_buff = nullptr;
+		}
+		if (m_reco)
+		{
+			free(m_reco);
+			m_reco = nullptr;
 		}
 		if (nullptr != m_acqthread)
 		{

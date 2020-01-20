@@ -20,7 +20,8 @@ public:
 	uint64_t m_stop;
 	uint64_t m_pos;
 	uint8_t * m_pbuf;
-
+	ImgNfo m_nfo;
+	bool m_reDraw;
 	RecordedDataDlg(CWnd* pParent = nullptr);   // standard constructor
 	virtual ~RecordedDataDlg();
 
@@ -38,14 +39,20 @@ public:
 	afx_msg void OnBnClickedCancel();
 	afx_msg void OnClose();
 	virtual BOOL OnInitDialog();
-	afx_msg void OnBnClickedBtRecplay();
+
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	void Play();
+	void ReDraw();
 	// Progressbar showing where we are
-	CProgressCtrl m_PrgPlay;
+	afx_msg void OnBnClickedBtRecplay();
 	afx_msg void OnBnClickedBtRecffor();
 	afx_msg void OnBnClickedBtRecfback();
 	afx_msg void OnBnClickedBtRecpause();
 	afx_msg void OnBnClickedBtRecstop();
 	afx_msg void OnBnClickedBtRecstepf();
+	// Tells where we are in the recorded images
+	CSliderCtrl m_sldPosition;
+	afx_msg void OnNMReleasedcaptureSldPos(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnBnClickedBtRecstepb();
+	afx_msg void OnPaint();
 };
