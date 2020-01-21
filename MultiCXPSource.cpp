@@ -674,8 +674,38 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	{
 		return ERROR_UNKNOWNCAMERA;
 	}
+	// set the grabber in order => MasterHostLink ID is no working as it is not taken into account by the camera ... :(
+	// Check MasterHostLinkID of the camera 
+	/*try
+	{
+		size_t s = m_grabberlist.size();
+		size_t linkid = s < 4 ? s : 4;		// camera have max 4 banks
+		
+		// looking for 
+		for (int i = 0; i < linkid; i++)
+		{
+			for (int j = i; j < s; j++)
+			{
+				int64_t id = m_grabberlist[j]->getInteger<RemoteModule>("MasterHostLinkID"); // id is going from 1->4
+				if (id == i+1)	// ok found the id we where looking for
+				{
+					// is it properly positioned ?
+					if (i != j)
+					{
+						// no we need to swap it  ...
+						std::swap(m_grabberlist[j], m_grabberlist[i]);
+					}
+					else
+						break;
+				}
+			}
+		}
+		
+	}
+	catch (const std::exception&)
+	{
 
-	// TODO : order the grabber 1 Bank -> Bank 4
+	}*/
 
 	
 	// configure for acquisition
