@@ -51,6 +51,7 @@ BEGIN_MESSAGE_MAP(RecordedDataDlg, CDialogEx)
 	ON_NOTIFY(NM_RELEASEDCAPTURE, IDC_SLD_POS, &RecordedDataDlg::OnNMReleasedcaptureSldPos)
 	ON_BN_CLICKED(IDC_BT_RECSTEPB, &RecordedDataDlg::OnBnClickedBtRecstepb)
 	ON_WM_PAINT()
+	ON_WM_SHOWWINDOW()
 END_MESSAGE_MAP()
 
 
@@ -89,14 +90,7 @@ BOOL RecordedDataDlg::OnInitDialog()
 		m_bitmapInfoCOL->bmiHeader.biClrImportant = 0;
 
 	}
-	if (nullptr == m_psource)
-		return TRUE;
-	m_psource->GetRecordedRange(m_count, m_start, m_stop);
-	m_pos = m_start;
-	m_psource->GetImageInfo(m_nfo);
-	m_psource->GetRecordImageAt(&m_pbuf, m_pos);
-	m_sldPosition.SetRange(0, (int)((m_stop - m_start) / 1000)); // in miliseconds
-	m_sldPosition.SetPos(0);
+	
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // EXCEPTION: OCX Property Pages should return FALSE
@@ -148,13 +142,13 @@ void RecordedDataDlg::OnBnClickedBtRecfback()
 
 void RecordedDataDlg::OnBnClickedBtRecpause()
 {
-	if (!(m_playType & 0x01))
+	if (m_playType & 0x01)
 		KillTimer(1);
 	m_playType = 0;
 }
 void RecordedDataDlg::OnBnClickedBtRecstop()
 {
-	if (!(m_playType & 0x01))
+	if (m_playType & 0x01)
 		KillTimer(1);
 	m_pos = m_start;
 	m_psource->GetRecordImageAt(&m_pbuf, m_pos);
@@ -164,10 +158,10 @@ void RecordedDataDlg::OnBnClickedBtRecstop()
 }
 void RecordedDataDlg::OnBnClickedBtRecstepf()
 {
-	if (!(m_playType & 0x01))
+	if (m_playType & 0x01)
 		KillTimer(1);
 	m_playType = 0;
-	if (m_psource->GetRecordedImageNext(&m_pbuf, m_pos))
+	if (!m_psource->GetRecordedImageNext(&m_pbuf, m_pos))
 	{
 		m_sldPosition.SetPos((int)((m_pos - m_start)/1000));
 		ReDraw();
@@ -176,10 +170,10 @@ void RecordedDataDlg::OnBnClickedBtRecstepf()
 }
 void RecordedDataDlg::OnBnClickedBtRecstepb()
 {
-	if (!(m_playType & 0x01))
+	if (m_playType & 0x01)
 		KillTimer(1);
 	m_playType = 0;
-	if (m_psource->GetRecordedImageNext(&m_pbuf, m_pos))
+	if (!m_psource->GetRecordedImageNextEx(&m_pbuf, -1, m_pos))
 	{
 		m_sldPosition.SetPos((int)((m_pos - m_start) / 1000));
 		ReDraw();
@@ -218,7 +212,7 @@ void RecordedDataDlg::Play()
 	if (m_playType & 0b01000) // reverse
 		speed = (-1) * speed;
 
-	if (m_psource->GetRecordedImageNextEx(&m_pbuf, speed, m_pos))
+	if (!m_psource->GetRecordedImageNextEx(&m_pbuf, speed, m_pos))
 	{
 		m_sldPosition.SetPos((int)((m_pos - m_start)/1000));
 		ReDraw();
@@ -248,9 +242,11 @@ void RecordedDataDlg::ReDraw()
 void RecordedDataDlg::OnNMReleasedcaptureSldPos(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	// find current slider position and compute relative time
-	m_pos = m_start + ((size_t)m_sldPosition.GetPos()*1000);
+	size_t pos = m_sldPosition.GetPos();
+	pos *= 1000;
+	m_pos = m_start + pos;
 	// get related image
-	if (m_psource->GetRecordedImageNext(&m_pbuf, m_pos))
+	if (!m_psource->GetRecordImageAt(&m_pbuf, m_pos))
 	{
 		m_sldPosition.SetPos((int)((m_pos - m_start) / 1000));
 		ReDraw();
@@ -338,4 +334,21 @@ void RecordedDataDlg::OnPaint()
 
 	// accept a new Paint message
 	m_reDraw = true;
+}
+
+
+void RecordedDataDlg::OnShowWindow(BOOL bShow, UINT nStatus)
+{
+	CDialogEx::OnShowWindow(bShow, nStatus);
+	if (nullptr == m_psource)
+		return ;
+
+	m_psource->GetRecordedRange(m_count, m_start, m_stop);
+	m_pos = m_start;
+	m_psource->GetImageInfo(m_nfo);
+	m_psource->GetRecordImageAt(&m_pbuf, m_pos);
+	int range = (int)((m_stop - m_start) / 1000);
+	m_sldPosition.SetRange(0, range); // in miliseconds
+	m_sldPosition.SetPos(0);
+	
 }

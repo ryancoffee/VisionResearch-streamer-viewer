@@ -173,12 +173,8 @@ void CStreamerViewerDlg::setMemUsage()
 	}
 	else
 	{
-		// finish recording ...
-		m_Prog_Mem.SetPos((int)m_maxBuf);
 		// stop the current preview
 		OnGrabberStop();
-		// spawn new window to see the recorded data
-		m_RecDlg.ShowWindow(SW_SHOW);
 	}
 
 }
@@ -254,6 +250,7 @@ BEGIN_MESSAGE_MAP(CStreamerViewerDlg, CDialogEx)
 	ON_COMMAND(ID_ZOOMOUT_3, &CStreamerViewerDlg::OnZoomout3)
 	ON_COMMAND(ID_ZOOMOUT_4, &CStreamerViewerDlg::OnZoomout4)
 	ON_WM_DESTROY()
+	ON_WM_SHOWWINDOW()
 END_MESSAGE_MAP()
 
 
@@ -315,9 +312,9 @@ BOOL CStreamerViewerDlg::OnInitDialog()
 		m_bitmapInfoCOL->bmiHeader.biClrImportant = 0;
 
 	}
+	m_RecDlg.m_psource = &source;
 	m_RecDlg.Create(IDD_DLG_RECORDED, this);
 	m_RecDlg.ShowWindow(SW_HIDE);
-	m_RecDlg.m_psource = &source;
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -476,7 +473,7 @@ void CStreamerViewerDlg::OnCameraDetect()
 void CStreamerViewerDlg::OnGrabberStart()
 {
 	// Start image acquisition
-	source.SetFps(1000.0);
+	//source.SetFps(1000.0);
 	source.Start();
 	
 	// Start the timer to pull images
@@ -512,6 +509,13 @@ void CStreamerViewerDlg::OnGrabberStop()
 
 	// Stop image acquisition
 	source.Stop();
+	if (m_isRec)
+	{
+		m_Prog_Mem.SetPos(0);
+		m_isRec = false;
+		source.StopRecord();
+		m_RecDlg.ShowWindow(SW_SHOW);
+	}
 	
 	CMenu* pMenu = GetMenu();
 	pMenu->EnableMenuItem(ID_GRABBER_RECORD, MF_GRAYED);
@@ -642,3 +646,5 @@ void CStreamerViewerDlg::OnDestroy()
 
 	m_RecDlg.DestroyWindow();
 }
+
+

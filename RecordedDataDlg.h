@@ -55,4 +55,5 @@ public:
 	afx_msg void OnNMReleasedcaptureSldPos(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnBnClickedBtRecstepb();
 	afx_msg void OnPaint();
+	afx_msg void OnShowWindow(BOOL bShow, UINT nStatus);
 };

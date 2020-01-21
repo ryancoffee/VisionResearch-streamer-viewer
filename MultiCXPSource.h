@@ -181,7 +181,9 @@ public :
 		}
 		if (nullptr != m_acqthread)
 		{
-			m_acqthread->join();
+			if(m_acqthread->joinable())
+				m_acqthread->join();
+			
 			delete m_acqthread;
 			m_acqthread = nullptr;
 		}

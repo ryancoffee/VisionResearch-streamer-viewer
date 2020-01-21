@@ -100,19 +100,23 @@ bool MemoryManager::GetBuffer(void** buffer, int64_t increment_us, uint64_t& tim
 	}
 
 	// find current sample
-	ft64 = m_data[m_currentBuffer].first;
+	ft64 = increment_us;
+	/*ft64 = m_data[m_currentBuffer].first;
 	ft64 += (increment_us * 10);
 	if (ft64 > 0x8000000000000000)
-		return false;
+		return false;*/
+
 	void* ptr = nullptr;
 	// search the right item in the list
 	std::vector<dpair>::iterator it = std::lower_bound(m_data.begin(), m_data.end(), std::make_pair(ft64, ptr), 
 		[](dpair test, dpair val) -> bool { return (test.first < val.first); });
-	// retrieve the buffer
-	*buffer = (*it).second;
-	// retrieve the time
-	time = (*it).first;
+	
 	m_currentBuffer = (int)(it - m_data.begin());	// keep current index in case you want to pause and then step in ( using getNext buffer)
+
+	// retrieve the buffer
+	*buffer = m_data.at(m_currentBuffer).second;
+	// retrieve the time
+	time = m_data.at(m_currentBuffer).first;
 	return true;
 }
 
@@ -126,20 +130,23 @@ bool MemoryManager::SeekBuffer(void** buffer, int64_t frombegin_us, uint64_t& ti
 	uint64_t ft64;
 
 	// find first sample
-	ft64 = m_data[0].first;
+	ft64 = frombegin_us;
+	/*ft64 = m_data[0].first;
 	ft64 += (frombegin_us * 10);
 	if (ft64 > 0x8000000000000000)
-		return false;
+		return false;*/
 
 	void* ptr = nullptr;
 	// search the right item in the list
 	std::vector<std::pair<uint64_t, void*>>::iterator it = std::lower_bound(m_data.begin(), m_data.end(), std::make_pair(ft64,ptr),
 		[](dpair test, dpair val) -> bool { return (test.first < val.first); });
-	// retrieve the buffer
-	*buffer = (*it).second;
-	// retrieve the time
-	time = (*it).first;
+
 	m_currentBuffer = (int)(it - m_data.begin());	// keep current index in case you want to pause and then step in ( using getNext buffer)
+
+	// retrieve the buffer
+	*buffer = m_data.at(m_currentBuffer).second;
+	// retrieve the time
+	time = m_data.at(m_currentBuffer).first;
 	return true;
 }
 
@@ -152,8 +159,8 @@ bool MemoryManager::GetNextBuffer(void** buffer, uint64_t& time)
 	if (m_currentBuffer >= m_data.size())
 		return false;	// no more buffers
 
-	*buffer = (m_data[m_currentBuffer]).second;
-	time = (m_data[m_currentBuffer]).first;
+	*buffer = (m_data.at(m_currentBuffer)).second;
+	time = (m_data.at(m_currentBuffer)).first;
 	m_currentBuffer++;
 	return true;
 }
@@ -168,8 +175,8 @@ bool MemoryManager::GetNextBufferEx(void** buffer, int skip, uint64_t& time)
 		return false;	// no more buffers
 	if ((size_t)m_currentBuffer + skip < 0)
 		return false;
-	*buffer = (m_data[(size_t)m_currentBuffer+skip]).second;
-	time = (m_data[(size_t)m_currentBuffer+skip]).first;
+	*buffer = (m_data.at(m_currentBuffer + skip)).second;
+	time = (m_data.at(m_currentBuffer + skip)).first;
 	m_currentBuffer+=skip;
 	return true;
 }
@@ -213,17 +220,19 @@ bool MemoryManager::GetRange(uint64_t& ms, uint64_t& begin, uint64_t& end)
 {
 	if (m_isStoring)
 		return false;
-	if (m_data.size() == 0)
+	size_t s = m_data.size();
+	if ( 0 == s)
 		return false;
-	// get range
-	uint64_t range = (*(m_data.end())).first - (*(m_data.begin())).first;
-	ms = range / 10;
 
 	// get begin
-	begin = (*m_data.begin()).first;
+	begin = m_data.at(0).first;
 
 	// get end
-	end = (*m_data.end()).first;
+	end = m_data.at(s-1).first;
+
+	// get range
+	uint64_t range = end - begin;
+	ms = range / 1000;
 
 	return true;
 }
@@ -674,8 +683,12 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	{
 		m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
 		m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
+
 		m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
-		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 10000.0);  // set the trigger rate to 50 Hz
+		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 100.0);  // set the trigger rate to 50 Hz
+		m_grabberlist[0]->setFloat<DeviceModule>("ExposureRecoveryTime", 10.0); 
+		m_grabberlist[0]->setFloat<DeviceModule>("ExposureTime", 10.0);
+		m_grabberlist[0]->setFloat<DeviceModule>("StrobeDuration", 10.0);
 		m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
 	}
 	catch (...)
@@ -720,6 +733,10 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	ret = configGrabbers();
 	if (ret != SUCCESS)
 		return ret;
+
+	m_grabberlist[0]->setInteger<RemoteModule>("Width", 640);     // Special for demo
+	m_grabberlist[0]->setInteger<RemoteModule>("Height", 256 / nfo.lnkCount);     // Special for demo
+	m_grabberlist[0]->setFloat<RemoteModule>("ExposureTime", 90.0);
 
 	// fetch camera info
 	//std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
@@ -792,7 +809,7 @@ int MultiCXPSource::Record()
 		}
 		m_mm->StartStoring();
 		m_bRec = true;
-		
+		m_bRecDone = false;
 		// todo start time stamping 
 
 	}
@@ -806,6 +823,7 @@ bool MultiCXPSource::StopRecord()
 	{
 		m_mm->StopStoring();
 		m_bRec = false;
+		m_bRecDone = true;
 	}
 	return true;
 }
@@ -839,9 +857,11 @@ int MultiCXPSource::Stop()
 	// stop all grabbers in inverse order
 	try
 	{
-		for (int i = m_lnkCnt - 1; i > -1; i--)
+		for (int i = 0; i < m_lnkCnt; i++)
 		{
 			m_grabberlist[i]->stop();
+			m_grabberlist[i]->resetBufferQueue();
+			m_grabberlist[i]->flushBuffers();
 		}
 	}
 	catch (...)
@@ -1074,5 +1094,5 @@ int MultiCXPSource::GetRecordedImageNextEx(UINT8** data, int skip, uint64_t& at)
 	convertImage(buff);
 	*data = m_reco;
 	return SUCCESS;
-	return 0;
+
 }
