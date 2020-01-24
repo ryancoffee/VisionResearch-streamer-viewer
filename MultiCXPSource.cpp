@@ -500,6 +500,12 @@ uint8_t MultiCXPSource::findCameraModel(std::string name, CamNfo& nfo)
 		ret = 3;
 		m_pgentl->memento("Found S710, what now ?");
 	}
+	else if (!name.compare("Eucalyptus"))
+	{
+		nfo.name = L"Eucalyptus";
+		ret = 8;
+		m_pgentl->memento("Found Eucalyptus");
+	}
 	else
 	{
 		nfo.name = L"unknown camera";
@@ -707,67 +713,76 @@ int MultiCXPSource::Init(CamNfo& nfo)
 
 	}*/
 
-	
-	// configure for acquisition
-	try
+	if (m_cameratype != 8)		// we have a real camera 
 	{
-		m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
-		m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
-
-		m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
-		m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 100.0);  // set the trigger rate to 50 Hz
-		m_grabberlist[0]->setFloat<DeviceModule>("ExposureRecoveryTime", 10.0); 
-		m_grabberlist[0]->setFloat<DeviceModule>("ExposureTime", 10.0);
-		m_grabberlist[0]->setFloat<DeviceModule>("StrobeDuration", 10.0);
-		m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
-	}
-	catch (...)
-	{
-		m_pgentl->memento("Failed to set camera configuration");
-		return ERROR_CAMERASETTING;
-	}
-	// how many grabber ?
-	size_t s = m_grabberlist.size();
-	if (s >= 4)
-		s = 4;
-	else if (s >= 2)
-		s = 2;
-	else
-		s = 1;			// for a single camera only 4,2 or 1 grabber can be used
-	nfo.lnkCount = (uint32_t)s;
-	m_lnkCnt = nfo.lnkCount;
-
-	// try to set the camera according to the grabber that have been found
-	try
-	{
-		switch (s)
+		// configure for acquisition
+		try
 		{
-		case 4:
-			m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_ABCD");
-			break;
-		case 2: 
-			m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_AB");
-			break;
-		case 1:
-		default:
-			m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_A");
-			break;
+			m_grabberlist[0]->setString<RemoteModule>("TriggerMode", "TriggerModeOn");   // camera in triggered mode
+			m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
+
+			m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
+			m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 100.0);  // set the trigger rate to 50 Hz
+			m_grabberlist[0]->setFloat<DeviceModule>("ExposureRecoveryTime", 10.0);
+			m_grabberlist[0]->setFloat<DeviceModule>("ExposureTime", 10.0);
+			m_grabberlist[0]->setFloat<DeviceModule>("StrobeDuration", 10.0);
+			m_grabberlist[0]->setString<DeviceModule>("ExposureReadoutOverlap", "True"); // camera needs 2 trigger to start
 		}
+		catch (...)
+		{
+			m_pgentl->memento("Failed to set camera configuration");
+			return ERROR_CAMERASETTING;
+		}
+		// how many grabber ?
+		size_t s = m_grabberlist.size();
+		if (s >= 4)
+			s = 4;
+		else if (s >= 2)
+			s = 2;
+		else
+			s = 1;			// for a single camera only 4,2 or 1 grabber can be used
+		nfo.lnkCount = (uint32_t)s;
+		m_lnkCnt = nfo.lnkCount;
+
+		// try to set the camera according to the grabber that have been found
+		try
+		{
+			switch (s)
+			{
+			case 4:
+				m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_ABCD");
+				break;
+			case 2:
+				m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_AB");
+				break;
+			case 1:
+			default:
+				m_grabberlist[0]->setString<RemoteModule>("Banks", "Banks_A");
+				break;
+			}
+		}
+		catch (...)
+		{
+			m_pgentl->memento("Failed to set Bank camera configuration");
+			return ERROR_CAMERASETTING;
+		}
+		// config the grabbers
+		ret = configGrabbers();
+		if (ret != SUCCESS)
+			return ret;
+
+		m_grabberlist[0]->setInteger<RemoteModule>("Width", 640);     // Special for demo
+		m_grabberlist[0]->setInteger<RemoteModule>("Height", 256 / nfo.lnkCount);     // Special for demo
+		m_grabberlist[0]->setFloat<RemoteModule>("ExposureTime", 90.0);
 	}
-	catch(...)
+	else
 	{
-		m_pgentl->memento("Failed to set Bank camera configuration");
-		return ERROR_CAMERASETTING;
+		// we have a simulator
+		nfo.lnkCount = 1;
+		m_lnkCnt = nfo.lnkCount;
+		m_grabberlist[0]->reallocBuffers(CXPBUFCOUNT);
+
 	}
-	// config the grabbers
-	ret = configGrabbers();
-	if (ret != SUCCESS)
-		return ret;
-
-	m_grabberlist[0]->setInteger<RemoteModule>("Width", 640);     // Special for demo
-	m_grabberlist[0]->setInteger<RemoteModule>("Height", 256 / nfo.lnkCount);     // Special for demo
-	m_grabberlist[0]->setFloat<RemoteModule>("ExposureTime", 90.0);
-
 	// fetch camera info
 	//std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
 	//nfo.name = CString(name.c_str());
@@ -887,7 +902,7 @@ int MultiCXPSource::Stop()
 	// stop all grabbers in inverse order
 	try
 	{
-		for (int i = 0; i < m_lnkCnt; i++)
+		for (unsigned int i = 0; i < m_lnkCnt; i++)
 		{
 			m_grabberlist[i]->stop();
 			m_grabberlist[i]->resetBufferQueue();

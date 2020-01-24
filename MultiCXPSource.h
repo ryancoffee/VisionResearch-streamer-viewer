@@ -85,7 +85,7 @@ private:
 	EGenTL* m_pgentl;
 	std::thread* m_acqthread;
 	std::vector<std::pair<int, int>> m_cameraList;
-	// 0 unknow, 1 S990, 2 S640, 3 S710
+	// 0 unknow, 1 S990, 2 S640, 3 S710, 8 Eucaliptus
 	uint8_t m_cameratype; 
 	uint32_t m_bufferCount;
 	bool m_bRecDone;
