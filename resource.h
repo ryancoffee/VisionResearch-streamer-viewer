@@ -23,8 +23,13 @@
 #define IDC_BT_RECFBACK                 1012
 #define IDC_PRG_PLAY                    1013
 #define IDC_SLD_POS                     1014
-#define IDC_STPICT                      1015
 #define IDC_STRECORD                    1016
+#define IDC_EDT_CURRENT                 1017
+#define IDC_EDT_STARTEXPORT             1018
+#define IDC_BT_SETSTARTEXPORT           1019
+#define IDC_EDT_ENDEXPORT               1020
+#define IDC_BT_SETENDEXPORT             1021
+#define IDC_BT_EXPORTNOW                1022
 #define ID_CAMERA_DETECT                32771
 #define ID_GRABBER_START                32773
 #define ID_GRABBER_STOP                 32774
@@ -51,7 +56,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        132
 #define _APS_NEXT_COMMAND_VALUE         32791
-#define _APS_NEXT_CONTROL_VALUE         1017
+#define _APS_NEXT_CONTROL_VALUE         1023
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

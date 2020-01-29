@@ -19,9 +19,14 @@ RecordedDataDlg::RecordedDataDlg(CWnd* pParent /*=nullptr*/)
 	, m_count(0)
 	, m_start(0)
 	, m_stop(0)
+	, m_startexport(0)
+	, m_stopexport(0)
 	, m_pos(0)
 	, m_pbuf(nullptr)
 	, m_reDraw(true)
+	, m_StrCurrentFrame(_T(""))
+	, m_StrEndExport(_T(""))
+	, m_StrStartExport(_T(""))
 {
 	m_nfo.sizeX = 0;
 	m_nfo.sizeY = 0;
@@ -35,6 +40,9 @@ void RecordedDataDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_SLD_POS, m_sldPosition);
+	DDX_Text(pDX, IDC_EDT_CURRENT, m_StrCurrentFrame);
+	DDX_Text(pDX, IDC_EDT_STARTEXPORT, m_StrStartExport);
+	DDX_Text(pDX, IDC_EDT_ENDEXPORT, m_StrEndExport);
 }
 
 
@@ -52,6 +60,8 @@ BEGIN_MESSAGE_MAP(RecordedDataDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BT_RECSTEPB, &RecordedDataDlg::OnBnClickedBtRecstepb)
 	ON_WM_PAINT()
 	ON_WM_SHOWWINDOW()
+	ON_BN_CLICKED(IDC_BT_SETSTARTEXPORT, &RecordedDataDlg::OnBnClickedBtSetstartexport)
+	ON_BN_CLICKED(IDC_BT_SETENDEXPORT, &RecordedDataDlg::OnBnClickedBtSetendexport)
 END_MESSAGE_MAP()
 
 
@@ -200,19 +210,19 @@ void RecordedDataDlg::Play()
 	int step;
 	switch (speed)
 	{
-	case 0: step = 10;
+	case 0: step = 1;
 		break;
-	case 1: step = 80;
+	case 1: step = 8;
 		break;
-	case 2: step = 400;
+	case 2: step = 40;
 		break;
-	case 3: step = 1000;
+	case 3: step = 100;
 		break;
 	}
 	if (m_playType & 0b01000) // reverse
-		speed = (-1) * speed;
+		step = (-1) * step;
 
-	if (!m_psource->GetRecordedImageNextEx(&m_pbuf, speed, m_pos))
+	if (!m_psource->GetRecordedImageNextEx(&m_pbuf, step, m_pos))
 	{
 		m_sldPosition.SetPos((int)((m_pos - m_start)/1000));
 		ReDraw();
@@ -233,8 +243,18 @@ void RecordedDataDlg::ReDraw()
 		CWnd* pic = GetDlgItem(IDC_STRECORD);
 		CRect rect;
 		pic->GetClientRect(&rect);
+		SetTime(m_StrCurrentFrame, m_pos - m_start);
 		InvalidateRect(&rect, false);
+		UpdateData(false);
 	}
+}
+
+void RecordedDataDlg::SetTime(CString& str, uint64_t time)
+{
+	uint32_t us = (uint32_t)(time % 1000);
+	uint32_t ms = (uint32_t)((time / 1000) % 1000);
+	uint32_t s = (uint32_t)(time / 1000000);
+	str.Format(L"%u:%.3u:%.3u", s, ms, us);
 }
 
 
@@ -345,10 +365,38 @@ void RecordedDataDlg::OnShowWindow(BOOL bShow, UINT nStatus)
 
 	m_psource->GetRecordedRange(m_count, m_start, m_stop);
 	m_pos = m_start;
+	m_startexport = 0;
+	m_stopexport = m_stop - m_start;
 	m_psource->GetImageInfo(m_nfo);
 	m_psource->GetRecordImageAt(&m_pbuf, m_pos);
 	int range = (int)((m_stop - m_start) / 1000);
 	m_sldPosition.SetRange(0, range); // in miliseconds
 	m_sldPosition.SetPos(0);
-	
+	SetTime(m_StrStartExport, m_startexport);
+	SetTime(m_StrEndExport, m_stopexport);
+	UpdateData(false);	
+}
+
+
+void RecordedDataDlg::OnBnClickedBtSetstartexport()
+{
+	uint64_t pos = m_pos - m_start;
+	if (pos < m_stopexport)
+	{
+		m_startexport = pos;
+		SetTime(m_StrStartExport, m_startexport);
+		UpdateData(false);
+	}
+}
+
+
+void RecordedDataDlg::OnBnClickedBtSetendexport()
+{
+	uint64_t pos = m_pos - m_start;
+	if (pos > m_startexport)
+	{
+		m_stopexport = pos;
+		SetTime(m_StrEndExport, m_stopexport);
+		UpdateData(false);
+	}
 }

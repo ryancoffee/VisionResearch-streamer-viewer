@@ -17,6 +17,8 @@ public:
 	int m_playType; 
 	uint64_t m_count;
 	uint64_t m_start;
+	uint64_t m_startexport;
+	uint64_t m_stopexport;
 	uint64_t m_stop;
 	uint64_t m_pos;
 	uint8_t * m_pbuf;
@@ -43,6 +45,8 @@ public:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	void Play();
 	void ReDraw();
+	void SetTime(CString& str, uint64_t time);
+
 	// Progressbar showing where we are
 	afx_msg void OnBnClickedBtRecplay();
 	afx_msg void OnBnClickedBtRecffor();
@@ -56,4 +60,9 @@ public:
 	afx_msg void OnBnClickedBtRecstepb();
 	afx_msg void OnPaint();
 	afx_msg void OnShowWindow(BOOL bShow, UINT nStatus);
+	CString m_StrCurrentFrame;
+	CString m_StrStartExport;
+	CString m_StrEndExport;
+	afx_msg void OnBnClickedBtSetstartexport();
+	afx_msg void OnBnClickedBtSetendexport();
 };
