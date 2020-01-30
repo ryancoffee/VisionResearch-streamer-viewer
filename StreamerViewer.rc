@@ -136,6 +136,24 @@ BEGIN
     PUSHBUTTON      "Export",IDC_BT_EXPORTNOW,88,239,50,15
 END
 
+IDD_DLG_EXPORT DIALOGEX 0, 0, 381, 87
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_TOPMOST
+CAPTION "Export"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Cancel",IDCANCEL,313,66,50,14
+    EDITTEXT        IDC_EDIT1,45,15,234,14,ES_AUTOHSCROLL
+    LTEXT           "Folder :",IDC_STATIC,18,17,26,8
+    PUSHBUTTON      "Browse",IDC_BUTTON1,342,15,32,13
+    LTEXT           "Name : ",IDC_STATIC,18,36,26,8
+    EDITTEXT        IDC_EDIT2,45,33,85,14,ES_AUTOHSCROLL
+    GROUPBOX        "Export as",IDC_STATIC,145,34,109,38
+    CONTROL         "Tiff",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,157,49,27,10
+    CONTROL         "Mkv",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,201,49,29,10
+    PUSHBUTTON      "Export now",IDC_BUTTON2,44,52,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -203,6 +221,14 @@ BEGIN
         TOPMARGIN, 1
         BOTTOMMARGIN, 254
     END
+
+    IDD_DLG_EXPORT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 374
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 80
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -249,6 +275,21 @@ BEGIN
     0, 100, 0, 0,
     0, 100, 0, 0,
     0, 100, 0, 0
+END
+
+IDD_DLG_EXPORT AFX_DIALOG_LAYOUT
+BEGIN
+    0,
+    100, 100, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 0, 0,
+    100, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0
 END
 
 

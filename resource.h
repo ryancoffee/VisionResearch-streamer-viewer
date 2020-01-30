@@ -9,6 +9,7 @@
 #define IDR_MAINFRAME                   128
 #define IDR_MAINMENU                    129
 #define IDD_DLG_RECORDED                130
+#define IDD_DLG_EXPORT                  132
 #define IDC_STPICTURE                   1000
 #define IDC_EDT_FPS                     1001
 #define IDC_EDT_MPS                     1002
@@ -30,6 +31,12 @@
 #define IDC_EDT_ENDEXPORT               1020
 #define IDC_BT_SETENDEXPORT             1021
 #define IDC_BT_EXPORTNOW                1022
+#define IDC_EDIT1                       1023
+#define IDC_BUTTON1                     1024
+#define IDC_EDIT2                       1025
+#define IDC_CHECK1                      1026
+#define IDC_CHECK2                      1027
+#define IDC_BUTTON2                     1028
 #define ID_CAMERA_DETECT                32771
 #define ID_GRABBER_START                32773
 #define ID_GRABBER_STOP                 32774
@@ -54,9 +61,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        132
+#define _APS_NEXT_RESOURCE_VALUE        134
 #define _APS_NEXT_COMMAND_VALUE         32791
-#define _APS_NEXT_CONTROL_VALUE         1023
+#define _APS_NEXT_CONTROL_VALUE         1029
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

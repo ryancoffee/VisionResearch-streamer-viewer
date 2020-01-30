@@ -1,7 +1,7 @@
 #pragma once
 
-#include "c:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
-#include "c:\Program Files\Euresys\Coaxlink\include\FormatConverter.h"
+#include "e:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
+#include "e:\Program Files\Euresys\Coaxlink\include\FormatConverter.h"
 #include "error.h"
 #include <thread>
 #include <string>
