@@ -1,7 +1,14 @@
 #pragma once
 #include "MultiCXPSource.h"
 
+//opencv test
+#include"opencv2/core.hpp"
+#include"opencv2/videoio.hpp"
+#include"opencv2/highgui.hpp"
+
 // CExport dialog
+
+using namespace cv;
 
 class CExport : public CDialogEx
 {
@@ -15,6 +22,7 @@ public:
 	bool m_IsExport;
 
 	MultiCXPSource* m_pSource;
+	cv::VideoWriter* m_pMkvVideo;
 	void RecordMkvData(void* buffer, uint64_t time);
 	void RecordTiffY8( void* buffer, uint64_t time);
 // Dialog Data

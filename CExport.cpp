@@ -54,12 +54,18 @@ void ExportThread(LPVOID Param)
 		dlg->m_pMkvVideo = nullptr;
 	}
 
-	dlg->m_CS_Export_Status = L"export finished";
+	dlg->m_CS_ExportStatus = L"export finished";
 	Sleep(1000);
 	dlg->m_IsExport = false;
 }
 
+std::string wstr2str(const std::wstring& wstr)
+{
+	using convert_typeX = std::codecvt_utf8<wchar_t>;
+	std::wstring_convert<convert_typeX, wchar_t> converterX;
 
+	return converterX.to_bytes(wstr);
+}
 
 // CExport dialog
 
@@ -86,13 +92,14 @@ CExport::~CExport()
 
 void CExport::RecordMkvData(void* buffer, uint64_t time)
 {
+	ImgNfo nfo;
+	m_pSource->GetImageInfo(nfo);
+
 	if (nullptr == m_pMkvVideo)
 	{
 		std::wostringstream savename;
 		savename << (LPCWSTR)m_CS_RecordPath << L"\\" << (LPCWSTR)m_CS_RecordBaseName << L".mkv";
-		m_HDSave.SetPath(savename.str());
-
-		m_pMkvVideo = new cv::VideoWriter(wstr2str(savename.str()), 0, 1000 / m_Period, cv::Size((int)fh.sizex, (int)fh.sizey), false);
+		m_pMkvVideo = new cv::VideoWriter(wstr2str(savename.str()), 0, 1000 / m_Period, cv::Size((int)nfo.sizeX, (int)nfo.sizeY), false);
 		if (!m_pMkvVideo->isOpened())
 		{
 			AfxMessageBox(L"Could not create MKV file for writing");
@@ -101,7 +108,7 @@ void CExport::RecordMkvData(void* buffer, uint64_t time)
 	}
 	// create a Mat around the retrieved buffer
 	// NOTICE Mat are created FIRST Height THEN Width
-	cv::Mat frame((int)fh.sizey, (int)fh.sizex, CV_8U, data);
+	cv::Mat frame((int)nfo.sizeY, (int)nfo.sizeX, CV_8U, buffer);
 	// store it in the mkv file
 	m_pMkvVideo->write(frame);
 }
@@ -109,11 +116,11 @@ void CExport::RecordMkvData(void* buffer, uint64_t time)
 void CExport::RecordTiffY8(void* buffer, uint64_t time)
 {
 	// CXP driver has its own tiff saving feature 
+	ImgNfo nfo;
+	m_pSource->GetImageInfo(nfo);
 	
-	
-	
-	ge::ImageConvertInput input = { static_cast<int>(fh.sizex), static_cast<int>(fh.sizey),
-		buff,
+	ge::ImageConvertInput input = { static_cast<int>(nfo.sizeX), static_cast<int>(nfo.sizeY),
+		buffer,
 		"Mono8",
 		{ &bufsize, 0, 0, 0 },
 		{ 0, 0, 0, 0 } };
