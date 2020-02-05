@@ -207,7 +207,7 @@ void RecordedDataDlg::OnTimer(UINT_PTR nIDEvent)
 void RecordedDataDlg::Play()
 {
 	int speed = ( m_playType >>1) & 0x03;
-	int step;
+	int step = 1;
 	switch (speed)
 	{
 	case 0: step = 1;
@@ -254,7 +254,7 @@ void RecordedDataDlg::SetTime(CString& str, uint64_t time)
 	uint32_t us = (uint32_t)(time % 1000);
 	uint32_t ms = (uint32_t)((time / 1000) % 1000);
 	uint32_t s = (uint32_t)(time / 1000000);
-	str.Format(L"%u:%.3u:%.3u", s, ms, us);
+	str.Format(L"%u:%03u:%03u", s, ms, us);
 }
 
 

@@ -187,6 +187,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CExport.h" />
     <ClInclude Include="error.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MultiCXPSource.h" />
@@ -198,6 +199,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CExport.cpp" />
     <ClCompile Include="error.cpp" />
     <ClCompile Include="MultiCXPSource.cpp" />
     <ClCompile Include="pch.cpp">

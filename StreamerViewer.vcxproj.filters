@@ -42,6 +42,9 @@
     <ClInclude Include="RecordedDataDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CExport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="StreamerViewer.cpp">
@@ -60,6 +63,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RecordedDataDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CExport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
