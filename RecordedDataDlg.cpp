@@ -5,6 +5,7 @@
 #include "StreamerViewer.h"
 #include "RecordedDataDlg.h"
 #include "afxdialogex.h"
+#include "CExport.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
@@ -73,6 +74,7 @@ BEGIN_MESSAGE_MAP(RecordedDataDlg, CDialogEx)
 	ON_WM_SHOWWINDOW()
 	ON_BN_CLICKED(IDC_BT_SETSTARTEXPORT, &RecordedDataDlg::OnBnClickedBtSetstartexport)
 	ON_BN_CLICKED(IDC_BT_SETENDEXPORT, &RecordedDataDlg::OnBnClickedBtSetendexport)
+	ON_BN_CLICKED(IDC_BT_EXPORTNOW, &RecordedDataDlg::OnBnClickedBtExportnow)
 END_MESSAGE_MAP()
 
 
@@ -410,4 +412,16 @@ void RecordedDataDlg::OnBnClickedBtSetendexport()
 		SetTime(m_StrEndExport, m_stopexport);
 		UpdateData(false);
 	}
+}
+
+
+void RecordedDataDlg::OnBnClickedBtExportnow()
+{
+	UpdateData(); // read from controls
+
+	CExport dlg;
+	dlg.m_pSource = m_psource;
+	dlg.m_start = m_startexport;
+	dlg.m_stop = m_stopexport;
+	dlg.DoModal();
 }

@@ -174,7 +174,7 @@ void CExport::OnBnClickedBtBrowse()
 void CExport::OnBnClickedBtExport()
 {
 	UpdateData();	// read value of GUI
-	if (m_TiffExport || m_MkvExport)
+	if (!(m_TiffExport || m_MkvExport))
 	{
 		// no export selection
 		AfxMessageBox(L"No export format selected");
@@ -200,5 +200,7 @@ void CExport::OnBnClickedBtExport()
 		AfxMessageBox(L"No data to export");
 		return;
 	}
+	std::thread t(ExportThread, this);
+	t.detach();
 	m_IsExport = true;
 }

@@ -65,4 +65,5 @@ public:
 	CString m_StrEndExport;
 	afx_msg void OnBnClickedBtSetstartexport();
 	afx_msg void OnBnClickedBtSetendexport();
+	afx_msg void OnBnClickedBtExportnow();
 };

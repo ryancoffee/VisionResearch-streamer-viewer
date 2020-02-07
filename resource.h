@@ -37,7 +37,6 @@
 #define IDC_CHK_TIFF                    1026
 #define IDC_CHK_MKV                     1027
 #define IDC_BT_EXPORT                   1028
-#define IDC_EDIT1                       1029
 #define IDC_EDT_STATUS                  1029
 #define ID_CAMERA_DETECT                32771
 #define ID_GRABBER_START                32773
