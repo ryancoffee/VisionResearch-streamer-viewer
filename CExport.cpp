@@ -42,8 +42,13 @@ void ExportThread(LPVOID Param)
 	MultiCXPSource* psource = dlg->m_pSource;
 	uint64_t time = dlg->m_start;
 	uint64_t end = dlg->m_stop;
-
+	uint64_t start = 0;
+	uint64_t stop = 0;
+	uint64_t count = 0;
+	dlg->m_pSource->GetRecordedRange(count, start, stop);
+	time += start;
 	int ret = psource->GetRecordImageAt(&buf, time);
+	time -= start;
 	// get each saved image
 	while (SUCCESS == ret && time < end) // while there are data and while we are not too fare in the stream
 	{
@@ -72,6 +77,7 @@ void ExportThread(LPVOID Param)
 		dlg->m_CS_ExportStatus.Format(L"Exporting image %07d at %u:%03u:%03u", imgcount, s, ms, us);
 		
 		ret = psource->GetRecordedImageNext(&buf, time);
+		time = -start;
 	}
 	
 	if (nullptr != dlg->m_pMkvVideo)
