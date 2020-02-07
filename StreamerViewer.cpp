@@ -8,7 +8,10 @@
 #include "StreamerViewerDlg.h"
 
 #ifdef _DEBUG
-#define new DEBUG_NEW
+#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
 #endif
 
 

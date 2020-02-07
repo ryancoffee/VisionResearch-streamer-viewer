@@ -6,6 +6,12 @@
 #include "RecordedDataDlg.h"
 #include "afxdialogex.h"
 
+#ifdef _DEBUG
+#define new DEBUG_NEW ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#endif
 
 // RecordedDataDlg dialog
 
@@ -34,6 +40,11 @@ RecordedDataDlg::RecordedDataDlg(CWnd* pParent /*=nullptr*/)
 
 RecordedDataDlg::~RecordedDataDlg()
 {
+	if (m_bitmapInfoCOL != nullptr)
+	{
+		free(m_bitmapInfoCOL);
+		m_bitmapInfoCOL = nullptr;
+	}
 }
 
 void RecordedDataDlg::DoDataExchange(CDataExchange* pDX)

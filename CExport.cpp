@@ -6,7 +6,31 @@
 #include "CExport.h"
 #include "afxdialogex.h"
 
-// worker thread
+
+
+#include <string>
+#include <sstream>
+#include <codecvt>
+#include <cstdio>
+#include <string>
+#include <cassert>
+
+#ifdef _DEBUG
+#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#endif
+
+// helper
+
+std::string wstr2str(const std::wstring& wstr)
+{
+	using convert_typeX = std::codecvt_utf8<wchar_t>;
+	std::wstring_convert<convert_typeX, wchar_t> converterX;
+
+	return converterX.to_bytes(wstr);
+}
 
 // Export Thread
 void ExportThread(LPVOID Param)
@@ -23,7 +47,10 @@ void ExportThread(LPVOID Param)
 	// get each saved image
 	while (SUCCESS == ret && time < end) // while there are data and while we are not too fare in the stream
 	{
-
+		uint32_t us = (uint32_t)(time % 1000);
+		uint32_t ms = (uint32_t)((time / 1000) % 1000);
+		uint32_t s = (uint32_t)(time / 1000000);
+		
 		// MKV
 		if (dlg->m_MkvExport)
 		{
@@ -33,14 +60,14 @@ void ExportThread(LPVOID Param)
 		// Tiff
 		if (dlg->m_TiffExport)
 		{
+			CString savename;
+			savename.Format(L"%s\\block%04d\\%s - %u:%03u:%03u.tiff", (LPCWSTR)(dlg->m_CS_RecordPath), (imgcount/100000),(LPCWSTR)dlg->m_CS_RecordBaseName, s, ms, us);
+			dlg->m_pSource->SaveImage(buf, wstr2str((LPCWSTR)savename));
 
-			dlg->RecordTiffY8((void*)buf, time);
 		}
 		
 		imgcount++;
-		uint32_t us = (uint32_t)(time % 1000);
-		uint32_t ms = (uint32_t)((time / 1000) % 1000);
-		uint32_t s = (uint32_t)(time / 1000000);
+
 
 		dlg->m_CS_ExportStatus.Format(L"Exporting image %07d at %u:%03u:%03u", imgcount, s, ms, us);
 		
@@ -59,13 +86,8 @@ void ExportThread(LPVOID Param)
 	dlg->m_IsExport = false;
 }
 
-std::string wstr2str(const std::wstring& wstr)
-{
-	using convert_typeX = std::codecvt_utf8<wchar_t>;
-	std::wstring_convert<convert_typeX, wchar_t> converterX;
 
-	return converterX.to_bytes(wstr);
-}
+
 
 // CExport dialog
 
@@ -82,6 +104,7 @@ CExport::CExport(CWnd* pParent /*=nullptr*/)
 	, m_stop(0)
 	, m_pSource(nullptr)
 	, m_IsExport(false)
+	, m_pMkvVideo(nullptr)
 {
 
 }
@@ -99,7 +122,7 @@ void CExport::RecordMkvData(void* buffer, uint64_t time)
 	{
 		std::wostringstream savename;
 		savename << (LPCWSTR)m_CS_RecordPath << L"\\" << (LPCWSTR)m_CS_RecordBaseName << L".mkv";
-		m_pMkvVideo = new cv::VideoWriter(wstr2str(savename.str()), 0, 1000 / m_Period, cv::Size((int)nfo.sizeX, (int)nfo.sizeY), false);
+		m_pMkvVideo = new cv::VideoWriter(wstr2str(savename.str()), 0, 40, cv::Size((int)nfo.sizeX, (int)nfo.sizeY), false);
 		if (!m_pMkvVideo->isOpened())
 		{
 			AfxMessageBox(L"Could not create MKV file for writing");
@@ -113,20 +136,6 @@ void CExport::RecordMkvData(void* buffer, uint64_t time)
 	m_pMkvVideo->write(frame);
 }
 
-void CExport::RecordTiffY8(void* buffer, uint64_t time)
-{
-	// CXP driver has its own tiff saving feature 
-	ImgNfo nfo;
-	m_pSource->GetImageInfo(nfo);
-	
-	ge::ImageConvertInput input = { static_cast<int>(nfo.sizeX), static_cast<int>(nfo.sizeY),
-		buffer,
-		"Mono8",
-		{ &bufsize, 0, 0, 0 },
-		{ 0, 0, 0, 0 } };
-
-	m_pgenTL->imageSaveToDisk(input, wstr2str(filename));
-}
 
 void CExport::DoDataExchange(CDataExchange* pDX)
 {

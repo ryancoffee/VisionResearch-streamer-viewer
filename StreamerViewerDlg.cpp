@@ -10,7 +10,10 @@
 #include "afxdialogex.h"
 
 #ifdef _DEBUG
-#define new DEBUG_NEW
+#define new DEBUG_NEW ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
 #endif
 
 
@@ -156,6 +159,8 @@ CStreamerViewerDlg::~CStreamerViewerDlg()
 		free(m_bitmapInfoCOL);
 		m_bitmapInfoCOL = nullptr;
 	}
+
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
 }
 

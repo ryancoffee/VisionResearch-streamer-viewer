@@ -1,6 +1,13 @@
 #include "pch.h"
 #include "MultiCXPSource.h"
 
+#ifdef _DEBUG
+#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#endif
+
 MemoryManager::MemoryManager()
 {
 	m_data.clear();
@@ -1140,4 +1147,16 @@ int MultiCXPSource::GetRecordedImageNextEx(UINT8** data, int skip, uint64_t& at)
 	*data = m_reco;
 	return SUCCESS;
 
+}
+
+int MultiCXPSource::SaveImage(void* buf, std::string pathname)
+{
+	if (!m_init)
+		return ERROR_NOINIT;
+
+	ge::ImageConvertInput input = { static_cast<int>(m_sizeX), static_cast<int>(m_sizeY), buf, "Mono8", };
+
+	m_pgentl->imageSaveToDisk(input, pathname);
+
+	return 0;
 }

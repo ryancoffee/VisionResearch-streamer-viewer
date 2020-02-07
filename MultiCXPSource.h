@@ -208,7 +208,7 @@ public :
 	int GetRecordImageAt(UINT8** data, uint64_t& at);
 	int GetRecordedImageNext(UINT8** data, uint64_t& at);
 	int GetRecordedImageNextEx(UINT8** data, int skip, uint64_t& at);
-
+	int SaveImage(void* buf, std::string pathname);
 
 };
 

@@ -9,6 +9,11 @@
 // CExport dialog
 
 using namespace cv;
+#ifdef _DEBUG
+#pragma comment(lib, "opencv_world420d.lib")
+#else
+#pragma comment(lib, "opencv_world420.lib")
+#endif
 
 class CExport : public CDialogEx
 {
@@ -24,7 +29,6 @@ public:
 	MultiCXPSource* m_pSource;
 	cv::VideoWriter* m_pMkvVideo;
 	void RecordMkvData(void* buffer, uint64_t time);
-	void RecordTiffY8( void* buffer, uint64_t time);
 // Dialog Data
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_DLG_EXPORT };
