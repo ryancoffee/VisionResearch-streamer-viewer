@@ -79,14 +79,16 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>E:\Projets\opencv\opencv\build\include;$(IncludePath)</IncludePath>
-    <LibraryPath>F:\Projects\openCV\opencv\build\x64\vc15\lib;E:\Projets\opencv\opencv\build\x64\vc15\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>E:\Projets\opencv\opencv\build\include;C:\Users\janssene\source\helper\opencv\build\include;$(IncludePath)</IncludePath>
+    <LibraryPath>F:\Projects\openCV\opencv\build\x64\vc15\lib;E:\Projets\opencv\opencv\build\x64\vc15\lib;C:\Users\janssene\source\helper\opencv\build\x64\vc15\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Users\janssene\source\helper\opencv\build\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\janssene\source\helper\opencv\build\x64\vc15\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

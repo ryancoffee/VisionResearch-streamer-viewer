@@ -47,7 +47,7 @@ void ExportThread(LPVOID Param)
 	uint64_t count = 0;
 	dlg->m_pSource->GetRecordedRange(count, start, stop);
 	time += start;
-	int ret = psource->GetRecordImageAt(&buf, time);
+	int ret = psource->GetRecordRawAt(&buf, time);
 	time -= start;
 	// get each saved image
 	while (SUCCESS == ret && time < end) // while there are data and while we are not too fare in the stream
@@ -66,7 +66,7 @@ void ExportThread(LPVOID Param)
 		if (dlg->m_TiffExport)
 		{
 			CString savename;
-			savename.Format(L"%s\\block%04d\\%s - %u:%03u:%03u.tiff", (LPCWSTR)(dlg->m_CS_RecordPath), (imgcount/100000),(LPCWSTR)dlg->m_CS_RecordBaseName, s, ms, us);
+			savename.Format(L"%s\\block%04d\\%s - %u-%03u-%03u.tiff", (LPCWSTR)(dlg->m_CS_RecordPath), (imgcount/100000),(LPCWSTR)dlg->m_CS_RecordBaseName, s, ms, us);
 			dlg->m_pSource->SaveImage(buf, wstr2str((LPCWSTR)savename));
 
 		}
@@ -76,8 +76,8 @@ void ExportThread(LPVOID Param)
 
 		dlg->m_CS_ExportStatus.Format(L"Exporting image %07d at %u:%03u:%03u", imgcount, s, ms, us);
 		
-		ret = psource->GetRecordedImageNext(&buf, time);
-		time = -start;
+		ret = psource->GetRecordedRawNext(&buf, time);
+		time -= start;
 	}
 	
 	if (nullptr != dlg->m_pMkvVideo)
@@ -128,7 +128,7 @@ void CExport::RecordMkvData(void* buffer, uint64_t time)
 	{
 		std::wostringstream savename;
 		savename << (LPCWSTR)m_CS_RecordPath << L"\\" << (LPCWSTR)m_CS_RecordBaseName << L".mkv";
-		m_pMkvVideo = new cv::VideoWriter(wstr2str(savename.str()), 0, 40, cv::Size((int)nfo.sizeX, (int)nfo.sizeY), false);
+		m_pMkvVideo = new cv::VideoWriter(wstr2str(savename.str()), 0, 25.0, cv::Size((int)nfo.sizeX, (int)nfo.sizeY), false);
 		if (!m_pMkvVideo->isOpened())
 		{
 			AfxMessageBox(L"Could not create MKV file for writing");
@@ -157,6 +157,8 @@ void CExport::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CExport, CDialogEx)
 	ON_BN_CLICKED(IDC_BT_BROWSE, &CExport::OnBnClickedBtBrowse)
 	ON_BN_CLICKED(IDC_BT_EXPORT, &CExport::OnBnClickedBtExport)
+	ON_BN_CLICKED(IDCANCEL, &CExport::OnBnClickedCancel)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -209,4 +211,25 @@ void CExport::OnBnClickedBtExport()
 	std::thread t(ExportThread, this);
 	t.detach();
 	m_IsExport = true;
+	SetTimer(1, 100,NULL);
+}
+
+
+void CExport::OnBnClickedCancel()
+{
+	// TODO: Add your control notification handler code here
+	CDialogEx::OnCancel();
+}
+
+
+void CExport::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: Add your message handler code here and/or call default
+	UpdateData(FALSE);
+	if (!m_IsExport)
+	{
+		KillTimer(1);
+		PostMessage(WM_COMMAND, IDOK, 0);
+	}
+	CDialogEx::OnTimer(nIDEvent);
 }

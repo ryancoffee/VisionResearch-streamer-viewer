@@ -1,7 +1,7 @@
 #pragma once
 
-#include "e:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
-#include "e:\Program Files\Euresys\Coaxlink\include\FormatConverter.h"
+#include "c:\Program Files\Euresys\Coaxlink\include\EGrabber.h"
+#include "c:\Program Files\Euresys\Coaxlink\include\FormatConverter.h"
 #include "error.h"
 #include <thread>
 #include <string>
@@ -140,6 +140,13 @@ public :
 	{
 		// destructor
 		m_brun = false;
+		// memory manager
+		if (nullptr != m_mm)
+		{
+			delete m_mm;
+			m_mm = nullptr;
+		}
+
 		// device list
 		for (EGrabber<CallbackOnDemand>* &grab : m_grabberlist)
 		{
@@ -205,8 +212,10 @@ public :
 	int GetExposure(double& exp);
 	int SetResolution(size_t X, size_t Y);
 	int GetRecordedRange(uint64_t& buffercount, uint64_t& start, uint64_t& end);
-	int GetRecordImageAt(UINT8** data, uint64_t& at);
+	int GetRecordImageAt(UINT8** data, uint64_t& at);	
+	int GetRecordRawAt(UINT8** data, uint64_t& at);
 	int GetRecordedImageNext(UINT8** data, uint64_t& at);
+	int GetRecordedRawNext(UINT8** data, uint64_t& at);
 	int GetRecordedImageNextEx(UINT8** data, int skip, uint64_t& at);
 	int SaveImage(void* buf, std::string pathname);
 

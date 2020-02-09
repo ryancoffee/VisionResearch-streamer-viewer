@@ -46,4 +46,6 @@ public:
 	BOOL m_TiffExport;
 	BOOL m_MkvExport;
 	CString m_CS_ExportStatus;
+	afx_msg void OnBnClickedCancel();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

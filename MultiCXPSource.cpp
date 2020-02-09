@@ -182,8 +182,8 @@ bool MemoryManager::GetNextBufferEx(void** buffer, int skip, uint64_t& time)
 		return false;	// no more buffers
 	if ((size_t)m_currentBuffer + skip < 0)
 		return false;
-	*buffer = (m_data.at(m_currentBuffer + skip)).second;
-	time = (m_data.at(m_currentBuffer + skip)).first;
+	*buffer = (m_data.at((size_t)m_currentBuffer + skip)).second;
+	time = (m_data.at((size_t)m_currentBuffer + skip)).first;
 	m_currentBuffer+=skip;
 	return true;
 }
@@ -1123,6 +1123,15 @@ int MultiCXPSource::GetRecordImageAt(UINT8** data, uint64_t& at)
 	return SUCCESS;
 }
 
+int MultiCXPSource::GetRecordRawAt(UINT8** data, uint64_t& at)
+{
+	if (!m_bRecDone)
+		return ERROR_PARAMOUTOFRANGE;
+	if (!m_mm->SeekBuffer((void**)data, at, at))
+		return ERROR_PARAMACCESS;
+	return SUCCESS;
+}
+
 int MultiCXPSource::GetRecordedImageNext(UINT8** data, uint64_t& at)
 {
 	if (!m_bRecDone)
@@ -1134,6 +1143,15 @@ int MultiCXPSource::GetRecordedImageNext(UINT8** data, uint64_t& at)
 	*data = m_reco;
 	return SUCCESS;
 
+}
+
+int MultiCXPSource::GetRecordedRawNext(UINT8** data, uint64_t& at)
+{
+	if (!m_bRecDone)
+		return ERROR_PARAMOUTOFRANGE;
+	if (!m_mm->GetNextBuffer((void**)data, at))
+		return ERROR_PARAMACCESS;
+	return SUCCESS;
 }
 
 int MultiCXPSource::GetRecordedImageNextEx(UINT8** data, int skip, uint64_t& at)
