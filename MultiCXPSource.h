@@ -85,7 +85,7 @@ private:
 	EGenTL* m_pgentl;
 	std::thread* m_acqthread;
 	std::vector<std::pair<int, int>> m_cameraList;
-	// 0 unknow, 1 S990, 2 S640, 3 S710, 8 Eucaliptus
+	// 0 unknow, 1 S990, 2 S640, 3 S710, 4 S210, 5 S200, 8 Eucaliptus
 	uint8_t m_cameratype; 
 	uint32_t m_bufferCount;
 	bool m_bRecDone;
@@ -94,6 +94,9 @@ private:
 	int buildGrabbers();
 	int configS990(size_t pitch, size_t payload);
 	int configS640(size_t pitch, size_t payload);
+	int configS710(size_t pitch, size_t payload);
+	int configTopDown();
+
 	int configGrabbers();
 	uint8_t findCameraModel(std::string name, CamNfo& nfo);
 	bool checkBank(gc::IF_HANDLE ifh, int bank);

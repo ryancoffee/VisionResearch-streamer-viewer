@@ -343,11 +343,11 @@ int MultiCXPSource::buildGrabbers()
 
 			int count = checkHardware(ifh);
 
-			if ( count && 0x1)
+			if ( count & 0x1)
 			{
 				m_cameraList.push_back(std::make_pair(iid, 0));
 			}
-			if ( count && 0x2)
+			if ( count & 0x2)
 			{
 				m_cameraList.push_back(std::make_pair(iid, 1));
 			}
@@ -371,8 +371,10 @@ int MultiCXPSource::buildGrabbers()
 			}
 			catch (...)
 			{
-				os << "----- Create Grabber filed for " << (cam.first + 1) << "/" << m_cameraList.size() << " , " << (cam.second + 1);
-				m_pgentl->memento(os.str());
+				std::ostringstream os1;
+				os1 << "----- Create Grabber filed for " << (cam.first + 1) << "/" << m_cameraList.size() << " , " << (cam.second + 1) << " failed";
+				m_pgentl->memento(os1.str());
+
 			}
 			
 		}
@@ -459,6 +461,64 @@ int MultiCXPSource::configS640(size_t pitch, size_t payload)
 	return SUCCESS;
 }
 
+int MultiCXPSource::configS710(size_t pitch, size_t payload)
+{
+	size_t stripeHeight = 8; // for all configuration
+	size_t stripePitch = stripeHeight * m_lnkCnt;
+
+	try
+	{
+		for (size_t ix = 0; ix < m_lnkCnt; ++ix)
+		{
+			// 710 configure camera
+			// configure stripes on grabber data stream
+			m_grabberlist[ix]->setString<StreamModule>(std::string("StripeArrangement"), std::string("Geometry_1X_2YM"));
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("LinePitch"), pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("LineWidth"), pitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("StripeHeight"), stripeHeight);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("StripePitch"), stripePitch);
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("BlockHeight"), 8); // in every config
+			m_grabberlist[ix]->setInteger<StreamModule>(std::string("StripeOffset"), 8 * ix);
+		}
+		for (uint32_t i = 0; i < m_bufferCount; i++)
+		{
+			m_basebuf[i] = static_cast<uint8_t*>(malloc(payload));
+			for (size_t ix = 0; ix < m_lnkCnt; ++ix)
+			{
+				//S710
+				m_grabberlist[ix]->announceAndQueue(UserMemory(m_basebuf[i], payload));
+			}
+		}
+	}
+	catch (...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;
+}
+
+int MultiCXPSource::configTopDown()
+{
+	try
+	{
+		// configure default top down read out
+		m_grabberlist[0]->setString<StreamModule>(std::string("StripeArrangement"), std::string("Geometry_1X_1Y"));
+		m_grabberlist[0]->setInteger<StreamModule>(std::string("LinePitch"), 0);
+		m_grabberlist[0]->setInteger<StreamModule>(std::string("LineWidth"), 0);
+		m_grabberlist[0]->setInteger<StreamModule>(std::string("StripeHeight"), 0);
+		m_grabberlist[0]->setInteger<StreamModule>(std::string("StripePitch"), 0);
+		m_grabberlist[0]->setInteger<StreamModule>(std::string("BlockHeight"), 0); 
+		m_grabberlist[0]->setInteger<StreamModule>(std::string("StripeOffset"), 0);
+		
+		m_grabberlist[0]->reallocBuffers(m_bufferCount);
+	}
+	catch (...)
+	{
+		return ERROR_PARAMACCESS;
+	}
+	return SUCCESS;;
+}
+
 int MultiCXPSource::configGrabbers()
 {
 	// configure each grabber dma controller
@@ -475,7 +535,14 @@ int MultiCXPSource::configGrabbers()
 	case 2:
 		ret = configS640(pitch, payloadSize);
 		break;
-
+	case 3: 
+		ret = configS710(pitch, payloadSize);
+		break;
+	case 4:
+	case 5:
+	case 8:
+		ret = configTopDown();
+		break;
 	default:
 		ret = ERROR_UNKNOWNDEV;
 		break;
@@ -505,8 +572,21 @@ uint8_t MultiCXPSource::findCameraModel(std::string name, CamNfo& nfo)
 	{
 		nfo.name = L"S710";
 		ret = 3;
-		m_pgentl->memento("Found S710, what now ?");
+		m_pgentl->memento("Found S710");
 	}
+	else if (name.find("S210") != std::string::npos)
+	{
+		nfo.name = L"S210";
+		ret = 4;
+		m_pgentl->memento("Found S210");
+	}
+	else if (name.find("S200") != std::string::npos)
+	{
+		nfo.name = L"S200";
+		ret = 5;
+		m_pgentl->memento("Found S200");
+	}
+
 	else if (!name.compare("Eucalyptus"))
 	{
 		nfo.name = L"Eucalyptus";
@@ -591,7 +671,7 @@ int MultiCXPSource::checkHardware(gc::IF_HANDLE ifh)
 		if (checkBank(ifh, 2))
 			count |= 0x02;
 	}
-	if (pc.compare("PC1633") == 0)
+	else if (pc.compare("PC1633") == 0)
 	{
 		m_pgentl->memento("CheckHardware : Found Coaxlink Quad G3");
 		if (firm != 1)
@@ -639,38 +719,54 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	// what camera do we have ? let check the camera name 
 	try
 	{
-		for (codT* g : m_grabberlist)
+		std::string name = m_grabberlist[0]->getString<RemoteModule>("DeviceModelName");
+		m_cameratype = findCameraModel(name, nfo);
+		if (!m_cameratype)
 		{
-			std::string name = g->getString<RemoteModule>("DeviceModelName");
-			m_cameratype = findCameraModel(name, nfo);
-			if (m_cameratype)
-				break;		// we found a compilant camera
-		}
-		if (0 == m_cameratype)
-		{
-			// found nothing compliant
-			m_pgentl->memento("Could not find any camera");
+			m_pgentl->memento("Found unsupported camera");
 			return ERROR_UNKNOWNCAMERA;
 		}
 		// how many grabber are from this type ?
+		// on true for multi bank grabbers
 		size_t s = m_grabberlist.size();
-		if (s > 1)
+		if (m_cameratype == 3 || m_cameratype == 2 || m_cameratype == 1)
 		{
-			for (int i = (int)s - 1; i > -1; i--)
+
+			if (s > 1)
 			{
-				CamNfo nfo;
-				std::string name = m_grabberlist[i]->getString<RemoteModule>("DeviceModelName");
-				uint8_t type = findCameraModel(name, nfo);
-				if (type != m_cameratype)
+				for (int i = (int)s - 1; i > -1; i--)
 				{
-					// this camera is not what we expect , remove it from the list
+					CamNfo nfo;
+					std::string name = m_grabberlist[i]->getString<RemoteModule>("DeviceModelName");
+					uint8_t type = findCameraModel(name, nfo);
+					if (type != m_cameratype)
+					{
+						// this camera is not what we expect , remove it from the list
+						codT* g = m_grabberlist[i];
+						delete g;
+						g = nullptr;
+						m_grabberlist.erase(m_grabberlist.begin() + i);
+					}
+				}
+
+			}
+		}
+		else
+		{
+			// we have a 1 bank camera
+			// keep only the first camera
+			if (s > 1)
+			{
+				for (int i = (int)s - 1; i > -1; i--)
+				{
+					// remove camera from the list
 					codT* g = m_grabberlist[i];
 					delete g;
 					g = nullptr;
 					m_grabberlist.erase(m_grabberlist.begin() + i);
+					
 				}
 			}
-
 		}
 
 		// we should have a least one grabber left
@@ -719,8 +815,9 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	{
 
 	}*/
+	// only change if we have a multi channel camera
 
-	if (m_cameratype != 8)		// we have a real camera 
+	if (m_cameratype == 3 || m_cameratype == 2 || m_cameratype == 1)		// we have a real camera 
 	{
 		// configure for acquisition
 		try
@@ -729,7 +826,7 @@ int MultiCXPSource::Init(CamNfo& nfo)
 			m_grabberlist[0]->setString<RemoteModule>("TriggerSource", "SWTRIGGER");     // source of trigger CXP
 
 			m_grabberlist[0]->setString<DeviceModule>("CameraControlMethod", "RC");      // tell grabber 0 to send trigger
-			m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 100.0);  // set the trigger rate to 50 Hz
+			m_grabberlist[0]->setFloat<DeviceModule>("CycleMinimumPeriod", 20000.0);  // set the trigger rate to 50 Hz
 			m_grabberlist[0]->setFloat<DeviceModule>("ExposureRecoveryTime", 10.0);
 			m_grabberlist[0]->setFloat<DeviceModule>("ExposureTime", 10.0);
 			m_grabberlist[0]->setFloat<DeviceModule>("StrobeDuration", 10.0);
@@ -777,10 +874,10 @@ int MultiCXPSource::Init(CamNfo& nfo)
 		ret = configGrabbers();
 		if (ret != SUCCESS)
 			return ret;
-
+/*
 		m_grabberlist[0]->setInteger<RemoteModule>("Width", 640);     // Special for demo
-		m_grabberlist[0]->setInteger<RemoteModule>("Height", 256 / nfo.lnkCount);     // Special for demo
-		m_grabberlist[0]->setFloat<RemoteModule>("ExposureTime", 90.0);
+		m_grabberlist[0]->setInteger<RemoteModule>("Height", 256 / nfo.lnkCount);     // Special for demo*/
+		m_grabberlist[0]->setFloat<RemoteModule>("ExposureTime", 5000.0);
 	}
 	else
 	{
