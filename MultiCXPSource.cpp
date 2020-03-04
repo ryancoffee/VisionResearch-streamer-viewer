@@ -783,40 +783,47 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	{
 		return ERROR_UNKNOWNCAMERA;
 	}
-	// set the grabber in order => MasterHostLink ID is no working as it is not taken into account by the camera ... :(
-	// Check MasterHostLinkID of the camera 
-	/*try
+	// set the grabber in order => Some camera have Image1StreamID that define what bank is connected
+	// working for S640 and S710
+	if (m_cameratype == 3 || m_cameratype == 2)
 	{
-		size_t s = m_grabberlist.size();
-		size_t linkid = s < 4 ? s : 4;		// camera have max 4 banks
-		
-		// looking for 
-		for (int i = 0; i < linkid; i++)
+		try
 		{
-			for (int j = i; j < s; j++)
+			m_pgentl->memento("Using Image1StreamID to check connection order");
+			size_t s = m_grabberlist.size();
+			size_t linkid = s < 4 ? s : 4;		// camera have max 4 banks
+
+			// looking for 
+			for (int i = 0; i < linkid; i++)
 			{
-				int64_t id = m_grabberlist[j]->getInteger<RemoteModule>("MasterHostLinkID"); // id is going from 1->4
-				if (id == i+1)	// ok found the id we where looking for
+				for (int j = i; j < s; j++)
 				{
-					// is it properly positioned ?
-					if (i != j)
+					int64_t id = m_grabberlist[j]->getInteger<RemoteModule>("Image1StreamID"); // id is going from 1->4
+					if (id == (int64_t)i + 1)	// ok found the id we where looking for
 					{
-						// no we need to swap it  ...
-						std::swap(m_grabberlist[j], m_grabberlist[i]);
+						// is it properly positioned ?
+						if (i != j)
+						{
+							// no we need to swap it  ...
+							std::swap(m_grabberlist[j], m_grabberlist[i]);
+						}
+						else
+							break;
 					}
-					else
-						break;
 				}
 			}
+
 		}
-		
+		catch (const std::exception&)
+		{
+
+		}
 	}
-	catch (const std::exception&)
-	{
+	// to prevent miss start disable all slaves
 
-	}*/
+
+
 	// only change if we have a multi channel camera
-
 	if (m_cameratype == 3 || m_cameratype == 2 || m_cameratype == 1)		// we have a real camera 
 	{
 		// configure for acquisition
@@ -881,15 +888,13 @@ int MultiCXPSource::Init(CamNfo& nfo)
 	}
 	else
 	{
-		// we have a simulator
+		// we have a single bank camera
 		nfo.lnkCount = 1;
 		m_lnkCnt = nfo.lnkCount;
 		m_grabberlist[0]->reallocBuffers(CXPBUFCOUNT);
 
 	}
 	// fetch camera info
-	//std::string name = m_grabberlist[0]->getString<DeviceModule>("DeviceModelName");
-	//nfo.name = CString(name.c_str());
 	m_sizeX = m_grabberlist[0]->getWidth();
 	m_sizeY = m_grabberlist[0]->getHeight() * nfo.lnkCount;
 
